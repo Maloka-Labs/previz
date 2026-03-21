@@ -9,7 +9,6 @@ from a single generated world.
 """
 
 import math
-import numpy as np
 
 
 class WorldLabsVirtualCamera:
