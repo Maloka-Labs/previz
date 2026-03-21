@@ -1,0 +1,20 @@
+[project]
+name = "comfyui-worldlabs"
+version = "1.0.0"
+description = "ComfyUI nodes for World Labs Marble API — 3D world generation, 360° panoramas, and Gaussian splats for AI filmmaking"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "Pillow>=9.0",
+    "numpy>=1.21",
+    "torch>=2.0",
+]
+
+[project.urls]
+"World Labs API Docs" = "https://docs.worldlabs.ai/api"
+"World Labs Platform" = "https://platform.worldlabs.ai"
+
+[tool.comfy]
+PublisherId = "worldlabs-comfyui"
+DisplayName = "World Labs 3D World Generation"
+Icon = "🌍"
