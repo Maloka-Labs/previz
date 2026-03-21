@@ -64,6 +64,7 @@ class WorldLabsVirtualCamera:
                      output_width, output_height,
                      roll=0.0, interpolation="bilinear"):
         import torch
+        import numpy as np
 
         # Get panorama as numpy [H, W, 3]
         if len(panorama.shape) == 4:
@@ -164,6 +165,7 @@ class WorldLabsVirtualCamera:
     @staticmethod
     def _bilinear_sample(img, map_x, map_y, out_h, out_w):
         """Bilinear interpolation sampling from equirectangular image."""
+        import numpy as np
         h, w, c = img.shape
 
         x0 = np.floor(map_x).astype(int)
