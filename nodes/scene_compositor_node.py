@@ -98,6 +98,7 @@ class WorldLabsSceneCompositor:
 
         import torch
         import json
+        import numpy as np
 
         if len(background.shape) == 4:
             bg = background[0].cpu().numpy()
@@ -259,6 +260,7 @@ class WorldLabsSceneCompositor:
     def _feather_mask(mask, radius):
         """Simple box-blur feathering."""
         from functools import reduce
+        import numpy as np
         kernel_size = radius * 2 + 1
         result = mask.copy()
 
