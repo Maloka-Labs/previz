@@ -76,6 +76,7 @@ class WorldLabsCompositeLayers:
                   color_match=True):
 
         import torch
+        import numpy as np
 
         if len(background.shape) == 4:
             result = background[0].cpu().numpy().copy()
@@ -153,6 +154,7 @@ class WorldLabsCompositeLayers:
     @staticmethod
     def _resize_mask(mask, target_w, target_h):
         """Nearest-neighbour resize for masks."""
+        import numpy as np
         src_h, src_w = mask.shape
         y_indices = (np.arange(target_h) * src_h / target_h).astype(int)
         x_indices = (np.arange(target_w) * src_w / target_w).astype(int)
@@ -166,6 +168,7 @@ class WorldLabsCompositeLayers:
         Simple mean/std colour transfer.
         Shifts the layer's colour distribution to match the background region.
         """
+        import numpy as np
         result = layer.copy()
         for ch in range(3):
             l_mean = np.mean(layer[:, :, ch])
