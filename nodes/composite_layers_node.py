@@ -5,7 +5,6 @@ Takes the background from Virtual Camera and up to 4 generated character layers
 (each with its mask from Scene Compositor), and composites them in order.
 """
 
-import numpy as np
 
 
 class WorldLabsCompositeLayers:
