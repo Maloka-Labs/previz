@@ -10,7 +10,6 @@ generation (ControlNet, LoRA, etc.) while this node handles the spatial logic:
 where characters go, what size they are, and how the layers blend.
 """
 
-import numpy as np
 
 
 class WorldLabsSceneCompositor:
