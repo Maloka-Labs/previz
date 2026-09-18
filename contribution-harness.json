@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "allowed_bot_names": [
+    "dependabot[bot]",
+    "renovate[bot]",
+    "github-actions[bot]"
+  ],
+  "path_exceptions": {},
+  "extra_forbidden_globs": []
+}

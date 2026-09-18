@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "source_repository": "https://github.com/Maloka-Labs/architecture",
+  "source_commit": "bd8b8e51473de28bb8a8931abd3053bdf2cc9899",
+  "files": {
+    "tools/contribution-harness/check.py": "89924d1f78da237345aa0880603757c02dd1c303e3c3a4157f22db1a6db4a9bf",
+    "tools/contribution-harness/test_check.py": "83e4397af3e505458a3c64a1a721ab1883d347719725a52379e43aecd0f09869",
+    "tools/contribution-harness/CONTRACT.md": "4a081dfa0e61d7f68f5c21715afe64d88e3189d37dd1a937e3f6887cb6ef10b8"
+  }
+}
