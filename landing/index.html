@@ -1,0 +1,3279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0a0a1e" />
+<title>The Magical Mystery Tour · The Camper Is Leaving From Your Neighbourhood</title>
+<meta name="description" content="There's a camper leaving from your neighbourhood — and a seat with your name on it. The Good Vybe Gurus tour." />
+<script>
+/* Reveal states are opt-in. This runs before first paint so enhanced
+   viewers get the choreography with no flash — and any viewer without
+   scripting, or where the page script fails, still gets the whole page. */
+(function(){
+  var d = document.documentElement;
+  d.className += (d.className ? ' ' : '') + 'js';
+  function showAll(){
+    var n = document.querySelectorAll('.reveal, .fade');
+    for(var i = 0; i < n.length; i++) n[i].classList.add('lit');
+  }
+  addEventListener('error', showAll);           // script threw or failed to parse
+  addEventListener('load', function(){          // script never ran at all
+    setTimeout(function(){
+      if(!document.querySelector('.reveal.lit, .fade.lit')) showAll();
+    }, 1200);
+  });
+})();
+</script>
+<style>
+/* ================================================================
+   THE MAGICAL MYSTERY TOUR — v2
+   Printed coach-tour ephemera — poster, ticket, timetable — over a
+   continuous drive from late afternoon to midnight.
+
+   v2 rebuilds the world so that scrolling IS driving: a five-layer
+   roadside landscape streams past at depth-scaled speeds, the country
+   changes as the light goes, and a dashboard clock keeps the time.
+   Everything that moves still derives from ONE spring-damped scroll
+   model (the engine at the foot of the document). Nothing loops for
+   decoration's sake.
+   ================================================================ */
+
+:root{
+  /* --- the ink palette: flat screen-print spot colours --- */
+  --ink:        #14102b;
+  --ink-deep:   #0a0a1e;
+  --paper:      #f6e7c8;
+  --paper-warm: #ecd6ae;
+  --vermilion-solid:#e04531;
+  --marigold:   #f0a91d;
+  --teal:       #10907e;
+  --magenta:    #bd2168;
+  --violet:     #4a2a7a;
+
+  /* --- live sky, rewritten every frame by the engine --- */
+  --sky-top:    #1b3560;
+  --sky-mid:    #7a4a5e;
+  --sky-low:    #d9772e;
+
+  /* --- type --- */
+  --display: "Cooper Black","Cooper Std","Bookman Old Style","Bookman JF Pro",
+             "Arial Rounded MT Bold", Rockwell, "Clarendon", Georgia, serif;
+  --body: "Avenir Next","Futura","Century Gothic","Trebuchet MS",
+          ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --mono: "Courier New", "Courier Prime", "IBM Plex Mono", ui-monospace, monospace;
+
+  /* --- measure --- */
+  --col: 1140px;
+}
+
+*{ box-sizing:border-box; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0;
+  background:var(--ink-deep);
+  color:var(--paper);
+  font-family:var(--body);
+  line-height:1.62;
+  overflow-x:hidden;
+}
+
+/* ================================================================
+   THE WORLD — fixed behind everything.
+   The canvas paints the roadside landscape OVER the sun and moon,
+   which is what lets the sun genuinely set behind the hills.
+   ================================================================ */
+.world{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+.sky{
+  position:absolute; inset:0;
+  background:linear-gradient(180deg,
+    var(--sky-top) 0%, var(--sky-top) 26%,
+    var(--sky-mid) 62%, var(--sky-low) 100%);
+}
+
+/* sun + moon are real bodies on an arc; the engine positions them */
+.body-sun,.body-moon{
+  position:absolute; top:0; left:0; border-radius:50%;
+  width:clamp(74px,9vw,132px); aspect-ratio:1;
+  will-change:transform,opacity;
+}
+/* resting places for viewers where the engine never positions them */
+.body-sun{ transform:translate(71vw,58vh); }
+.body-moon{ transform:translate(28vw,16vh); opacity:0; }
+.body-sun{
+  background:var(--marigold);
+  box-shadow:0 0 0 clamp(14px,2vw,26px) rgba(240,169,29,.20),
+             0 0 clamp(60px,9vw,130px) clamp(30px,5vw,70px) rgba(224,69,49,.55);
+}
+.body-moon{
+  background:radial-gradient(circle at 34% 30%, #fdf4dd 0 55%, #e8d5ac 78%, #ddc493 100%);
+  box-shadow:0 0 clamp(40px,6vw,90px) clamp(14px,3vw,40px) rgba(246,231,200,.28);
+}
+
+/* stars, landscape, fireflies, birds, embers — one canvas */
+#fx{ position:absolute; inset:0; width:100%; height:100%; }
+
+/* ================================================================
+   THE ROAD SPINE
+   A single serpentine path generated from the measured position of
+   every road-bearing section, so it reads as one continuous route with
+   no seams. The van travels it; the road lights up behind her.
+   ================================================================ */
+.page{ position:relative; }
+.spine{ position:absolute; inset:0; z-index:1; pointer-events:none; }
+.spine svg{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+
+/* The road is a tiling S-curve laid in CSS, so it winds down the page with
+   or without scripting. One tile enters and leaves at the same x with a
+   vertical tangent, so it repeats seamlessly however tall the page is.
+   The engine below generates a path on exactly the same maths, which is how
+   the travelling camper stays glued to this road. */
+.spine{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 0 C50 11 84 14 84 25 C84 36 50 39 50 50 C50 61 16 64 16 75 C16 86 50 89 50 100' fill='none' stroke='%23f0a91d' stroke-opacity='0.5' stroke-width='3' stroke-dasharray='9 11' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  background-repeat:repeat-y;
+  background-position:center top;
+  background-size:100% var(--period, 1100px);
+}
+@media(max-width:720px){
+  .spine{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M11 0 C11 11 18 14 18 25 C18 36 11 39 11 50 C11 61 4 64 4 75 C4 86 11 89 11 100' fill='none' stroke='%23f0a91d' stroke-opacity='0.5' stroke-width='3' stroke-dasharray='9 11' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+    background-size:100% var(--period, 700px);
+  }
+}
+
+/* --- the road, its stops, and the traveller --- */
+/* The CSS tile is the road for viewers without scripting. When the engine
+   runs it hands over to this path, whose dashes flow under the camper. */
+.js .spine{ background-image:none; }
+.road-base{ fill:none; stroke:rgba(246,231,200,.34); stroke-width:3.2;
+  stroke-linecap:round; stroke-dasharray:13 17; }
+.road-lit{ fill:none; stroke:url(#litInk); stroke-width:4; stroke-linecap:round;
+  stroke-dasharray:13 17; filter:drop-shadow(0 0 6px rgba(240,169,29,.55)); }
+
+/* stop badges — bright daisies struck on the road */
+.badge-petal{ fill:#fdf4dd; }
+.badge-core{ fill:var(--marigold); }
+.badge-daisy{ filter:drop-shadow(0 0 6px rgba(240,169,29,.45)); }
+.passed .badge-daisy{ filter:drop-shadow(0 0 11px rgba(240,169,29,.9)); }
+.badge-label{ font-family:var(--mono); font-size:10.5px; letter-spacing:.2em;
+  fill:rgba(246,231,200,.62); text-transform:uppercase; transition:fill .7s ease; }
+.badge-tie{ stroke:rgba(246,231,200,.34); stroke-width:1.5; stroke-dasharray:4 5; fill:none; }
+.badge-pulse{ fill:none; stroke:var(--marigold); stroke-width:2.5; opacity:0;
+  transform-box:fill-box; transform-origin:center; }
+.passed .badge-pulse{ animation:ignite 1s cubic-bezier(.2,.7,.3,1) forwards; }
+@keyframes ignite{
+  0%   { opacity:.9; transform:scale(.5); }
+  100% { opacity:0;  transform:scale(3.4); }
+}
+.stop-lit .badge-label{ fill:var(--marigold); }
+.stop-lit .badge-tie{ stroke:rgba(240,169,29,.6); }
+.stop-dawn .badge-label{ fill:var(--teal); }
+.stop-veiled .badge-petal{ fill:rgba(253,244,221,.38); }
+.stop-veiled .badge-core{ fill:rgba(240,169,29,.45); }
+.stop-veiled .badge-label{ fill:rgba(246,231,200,.4); }
+
+/* the traveller: the van is the progress indicator */
+#traveller{ will-change:transform; }
+
+/* Without scripting the SVG badges are never placed, so each stop wears an
+   inline crest instead. */
+[data-stop]{ position:relative; }
+html:not(.js) [data-stop]::before{
+  content:""; position:absolute; left:-42px; top:.55em;
+  width:17px; height:17px; border-radius:50%;
+  border:2.5px solid var(--marigold); background:#fdf4dd;
+  box-shadow:0 0 9px rgba(240,169,29,.6);
+}
+html:not(.js) [data-stop="veiled"]::before{ border-style:dashed; opacity:.5; }
+@media(max-width:720px){ html:not(.js) [data-stop]::before{ left:-34px; } }
+
+/* the veiled-stops teaser, set as a roadside aside */
+.veil-note{
+  margin-top:clamp(26px,4vh,42px); padding-left:1.2em;
+  border-left:2px solid rgba(246,231,200,.28);
+  font-family:var(--display); font-size:clamp(17px,2.2vw,23px);
+  color:var(--paper-warm); max-width:34ch;
+}
+.veil-list{ display:flex; flex-direction:column; gap:.1em; margin-top:1.6em; }
+.veil-row{
+  display:flex; align-items:baseline; gap:1.2em; padding:1.5em 0;
+  border-top:1px solid rgba(246,231,200,.16);
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.2em;
+  text-transform:uppercase; color:rgba(246,231,200,.5);
+}
+.veil-row .moonpip{
+  flex:0 0 auto; width:13px; height:13px; border-radius:50%;
+  border:1.5px dashed rgba(246,231,200,.4);
+  box-shadow:inset -4px 0 0 rgba(246,231,200,.16);
+}
+
+/* ================================================================
+   DRIVER'S POV — the GaiA windscreen.
+   The engine animates what is through the glass: the centre line
+   rushes toward you, hills drift past, stars come up with the night.
+   ================================================================ */
+.screen{ position:relative; }
+.screen svg{ width:100%; height:auto; display:block; }
+#helm{ transform-box:fill-box; transform-origin:center; will-change:transform; }
+.peace{ transform-box:fill-box; transform-origin:50% 0%; }
+.js .peace{ animation:sway 4s ease-in-out infinite; }
+@keyframes sway{ 0%,100%{ transform:rotate(-10deg);} 50%{ transform:rotate(10deg);} }
+.wstw{ animation:wstw 2.8s ease-in-out infinite; }
+@keyframes wstw{ 0%,100%{ opacity:.35;} 50%{ opacity:1;} }
+.screen figcaption{
+  margin-top:1.5em; font-family:var(--mono); font-size:12px;
+  letter-spacing:.22em; text-transform:uppercase; color:var(--paper);
+  text-align:center;
+}
+
+/* ================================================================
+   THE CAMPFIRE — where the road ends and the van parks
+   ================================================================ */
+.camp{ position:relative; margin-top:clamp(50px,8vh,90px); }
+.js .camp-van{ display:none; }
+html:not(.js) #traveller{ display:none; }
+.camp svg{ width:100%; height:auto; display:block; max-width:760px; margin-inline:auto; }
+.flame{ transform-box:fill-box; transform-origin:50% 100%; }
+.js .flame-a{ animation:lick 1.5s ease-in-out infinite; }
+.js .flame-b{ animation:lick 1.9s ease-in-out infinite .35s; }
+.js .flame-c{ animation:lick 1.15s ease-in-out infinite .7s; }
+@keyframes lick{
+  0%,100%{ transform:scaleY(1) scaleX(1); opacity:.92; }
+  50%    { transform:scaleY(1.16) scaleX(.9); opacity:1; }
+}
+.js .emberglow{ animation:emberpulse 3.4s ease-in-out infinite; }
+@keyframes emberpulse{ 0%,100%{ opacity:.34;} 50%{ opacity:.6;} }
+
+/* content nestles into the bend pockets on wide screens */
+@media(min-width:1040px){
+  .chapter.pocket-l{ padding-right:clamp(180px,26vw,420px); }
+  .chapter.pocket-r{ padding-left:clamp(180px,26vw,420px); }
+}
+
+/* paper grain, laid over the whole world */
+.grain{
+  position:fixed; inset:0; z-index:4; pointer-events:none;
+  opacity:.35; mix-blend-mode:overlay;
+  background-repeat:repeat;
+}
+
+/* the foreground plane: empty for the whole drive, then the telegraph
+   poles step onto it as the campsite comes into view behind them */
+.fore{ position:fixed; inset:0; z-index:3; pointer-events:none; }
+.fore canvas{ position:absolute; inset:0; width:100%; height:100%; }
+
+/* ================================================================
+   THE RIBBON — one slim translucent strip at the very foot of the
+   screen: vybes-per-hour reading left, sound control right. Kept
+   quiet so the imagery, especially the campfire, stays the star.
+   Meaningless without the engine, so .js-only.
+   ================================================================ */
+.ribbon{
+  position:fixed; left:0; right:0; bottom:0; z-index:3;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:1em; padding:6px clamp(14px,3vw,28px);
+  background:rgba(10,8,26,.55);
+  -webkit-backdrop-filter:blur(9px) saturate(160%);
+          backdrop-filter:blur(9px) saturate(160%);
+  border-top:1.5px solid rgba(246,231,200,.22);
+  font-family:var(--mono);
+}
+.rb-speed{ display:flex; align-items:center; gap:.9em; color:var(--marigold); }
+.rb-speed .lab{
+  font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+}
+.rb-speed .val{
+  font-size:13px; letter-spacing:.08em; font-variant-numeric:tabular-nums;
+  min-width:2ch; text-align:right;
+}
+.rb-meter{
+  width:clamp(70px,14vw,150px); height:3px; border-radius:2px;
+  background:rgba(246,231,200,.18); overflow:hidden;
+}
+.rb-meter i{
+  display:block; height:100%; width:0; border-radius:2px;
+  background:var(--marigold); box-shadow:0 0 8px rgba(240,169,29,.8);
+  transition:width .18s ease;
+}
+html:not(.js) .ribbon{ display:none; }
+.js .ribbon{ opacity:0; transition:opacity .9s ease 1.1s; }
+html.ready .ribbon{ opacity:1; }
+
+/* ================================================================
+   CONTENT
+   ================================================================ */
+main{ position:relative; z-index:2; }
+.wrap{ max-width:var(--col); margin-inline:auto; padding-inline:clamp(22px,5vw,60px); }
+
+.chapter{ padding-block:clamp(110px,19vh,210px); }
+.chapter:last-of-type{ padding-bottom:clamp(38px,6vh,78px); }
+
+h1,h2,h3{ font-family:var(--display); font-weight:400; line-height:1.12; margin:0; text-wrap:balance; }
+h1{ font-size:clamp(40px,8vw,102px); letter-spacing:-.015em; }
+h2{ font-size:clamp(30px,5.2vw,62px); letter-spacing:-.012em; }
+h3{ font-size:clamp(20px,2.5vw,28px); }
+
+p{ margin:0; max-width:62ch; }
+.lead{ font-size:clamp(17.5px,2.1vw,22px); color:var(--paper-warm); }
+.dim{ color:rgba(246,231,200,.72); }
+
+/* mis-registration: the second ink lands a hair off the first, the way
+   a two-pass screen-print does. Used once, in the hero. */
+.misreg{ position:relative; display:inline-block; }
+.misreg::before{
+  content:attr(data-ink);
+  position:absolute; left:-.022em; top:.019em;
+  color:var(--vermilion-solid); opacity:.42;
+  z-index:-1; pointer-events:none;
+}
+
+/* printed rules and labels */
+.slug{
+  font-family:var(--mono); font-size:12px; letter-spacing:.26em;
+  text-transform:uppercase; color:var(--marigold);
+  display:flex; align-items:center; gap:.9em;
+}
+.slug::after{ content:""; flex:1; height:1px; background:currentColor; opacity:.4; }
+
+/* line-mask reveal: copy wipes up from behind a rule with a slight
+   settling rotation, like a printing press feeding a sheet.
+   The hidden state is gated on .js, so the page reads in full whether or
+   not scripting is available. */
+.reveal{ display:block; overflow:hidden; }
+/* a whisker of cushion inside the mask, so descenders never clip */
+.reveal > *{ display:block; transform-origin:0 100%;
+  padding-bottom:.07em; margin-bottom:-.07em; }
+.js .reveal > *{
+  transform:translateY(108%) rotate(1.8deg);
+  transition:transform 1.05s cubic-bezier(.16,.84,.28,1);
+  transition-delay:var(--d,0s);
+}
+.js .reveal.lit > *{ transform:none; }
+.js .fade{ opacity:0; transition:opacity .9s ease; transition-delay:calc(var(--d,0s) + .12s); }
+.js .fade.lit{ opacity:1; }
+.s1{ --d:.08s; } .s2{ --d:.16s; } .s3{ --d:.24s; }
+
+/* rubber-stamp reveal: stamps and ticket-strip cells slam in
+   with a little overshoot, the way a hand stamp lands */
+.punch{ display:inline-block; }
+.js .fade .punch{ opacity:0; }
+.js .fade.lit .punch{
+  animation:punch .5s cubic-bezier(.2,1.5,.4,1) both;
+  animation-delay:var(--pd,0s);
+}
+@keyframes punch{
+  0%  { opacity:0; transform:scale(1.9) rotate(calc(var(--pr,0deg) - 8deg)); }
+  62% { opacity:1; transform:scale(.93) rotate(calc(var(--pr,0deg) + 1.6deg)); }
+  100%{ opacity:1; transform:scale(1) rotate(var(--pr,0deg)); }
+}
+
+/* ================================================================
+   LIQUID GLASS — translucent frosted panels that blur and refract
+   the world behind them. The world is a fixed canvas layer below in
+   normal flow, so nothing between panel and backdrop carries a
+   transform or filter (which would kill the effect).
+   ================================================================ */
+:root{
+  --lg-radius:22px; --lg-tint:238,233,255; --lg-tint-opacity:.10;
+  --lg-blur:18px; --lg-saturate:180%;
+  --lg-hairline:rgba(255,255,255,.30); --lg-hairline-dim:rgba(255,255,255,.05);
+  --lg-bevel-hi:rgba(255,255,255,.55); --lg-bevel-lo:rgba(0,0,0,.22);
+  --lg-shadow:0 34px 90px -46px rgba(0,0,0,.8);
+  --lg-text:#f5f0e6; --lg-text-soft:#d8d1e4;
+}
+@media (prefers-color-scheme:light){
+  :root{ --lg-tint:255,255,255; --lg-tint-opacity:.42;
+    --lg-hairline:rgba(255,255,255,.8); --lg-bevel-lo:rgba(0,0,0,.12);
+    --lg-shadow:0 30px 70px -40px rgba(40,30,70,.4);
+    --lg-text:#1c1630; --lg-text-soft:#4a4160; }
+}
+.liquid-glass{
+  position:relative; border-radius:var(--lg-radius); padding:clamp(22px,3vw,40px);
+  color:var(--lg-text); isolation:isolate;
+  background:linear-gradient(150deg,
+    rgba(var(--lg-tint),calc(var(--lg-tint-opacity) + .05)),
+    rgba(var(--lg-tint),var(--lg-tint-opacity)));
+  -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate));
+          backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate));
+  box-shadow:var(--lg-shadow), inset 0 1px 0 var(--lg-hairline),
+             inset 0 -1px 0 var(--lg-hairline-dim);
+}
+.liquid-glass::before{ content:""; position:absolute; inset:0; border-radius:inherit;
+  padding:1px; pointer-events:none;
+  background:linear-gradient(150deg,var(--lg-bevel-hi),rgba(255,255,255,.04) 42%,var(--lg-bevel-lo));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+          mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude; }
+.liquid-glass::after{ content:""; position:absolute; inset:0; border-radius:inherit;
+  pointer-events:none; mix-blend-mode:screen;
+  background:radial-gradient(130% 80% at 18% -12%,rgba(255,255,255,.20),transparent 58%); }
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+  .liquid-glass, .strip, .campnote{ background:rgba(22,17,36,.9); }
+  @media (prefers-color-scheme:light){ .liquid-glass{ background:rgba(255,255,255,.94); } }
+}
+@media (max-width:680px){ :root{ --lg-blur:12px; } }
+/* This page is a night world whatever the OS preference says — the
+   backdrop behind every panel is the same dusk-to-midnight canvas —
+   so the night tokens are pinned for light-scheme viewers too. */
+@media (prefers-color-scheme:light){
+  :root{ --lg-tint:238,233,255; --lg-tint-opacity:.10;
+    --lg-hairline:rgba(255,255,255,.30); --lg-bevel-lo:rgba(0,0,0,.22);
+    --lg-shadow:0 34px 90px -46px rgba(0,0,0,.8);
+    --lg-text:#f5f0e6; --lg-text-soft:#d8d1e4; }
+  @supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+    .liquid-glass{ background:rgba(22,17,36,.9); }
+  }
+}
+
+/* ================================================================
+   HERO
+   ================================================================ */
+.hero{
+  min-height:100svh;
+  display:flex; flex-direction:column; justify-content:center;
+  padding-top:11vh; padding-bottom:12vh;
+}
+.hero h1{ margin:.1em 0 0; }
+.hero .second{ display:block; color:var(--marigold); }
+.hero .third{
+  display:block; font-family:var(--display); font-style:italic;
+  font-size:clamp(19px,3.6vw,38px); color:var(--paper); margin-top:.34em;
+}
+
+/* the ticket-strip standfirst, poured in the same liquid glass as the
+   reading panels */
+.strip{
+  display:inline-flex; flex-wrap:wrap; align-items:stretch;
+  margin-top:2.4em; isolation:isolate; overflow:hidden;
+  border-radius:var(--lg-radius);
+  background:linear-gradient(150deg,
+    rgba(var(--lg-tint),calc(var(--lg-tint-opacity) + .05)),
+    rgba(var(--lg-tint),var(--lg-tint-opacity)));
+  -webkit-backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate));
+          backdrop-filter:blur(var(--lg-blur)) saturate(var(--lg-saturate));
+  box-shadow:var(--lg-shadow), inset 0 1px 0 var(--lg-hairline),
+             inset 0 -1px 0 var(--lg-hairline-dim);
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.strip span{ padding:.95em 1.4em; border-right:1.5px solid rgba(246,231,200,.22); }
+.strip span:last-child{ border-right:0; color:var(--marigold); }
+
+/* scroll cue: the road starts here */
+.cue{
+  margin-top:clamp(30px,7vh,70px);
+  display:flex; align-items:center; gap:1.1em;
+  font-family:var(--mono); font-size:11px; letter-spacing:.26em;
+  text-transform:uppercase; color:rgba(246,231,200,.6);
+  transition:opacity .5s ease;
+}
+.cue-line{
+  width:11px; height:44px; flex:0 0 auto;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 13'%3E%3Cpath d='M2 3 L5.5 7.5 L9 3' fill='none' stroke='%23f0a91d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") repeat-y center top;
+  background-size:11px 13px;
+}
+.js .cue-line{ animation:cueflow 1.05s linear infinite; }
+@keyframes cueflow{ to{ background-position:center 13px; } }
+html.rolling .cue{ opacity:0; }
+
+/* ================================================================
+   DEPARTURE-BOARD TICKER — a printed strip pasted across the page,
+   crawling on its own and hurrying when you do
+   ================================================================ */
+.tickerwrap{
+  position:relative; z-index:2;
+  width:106vw; margin-left:-3vw;
+  transform:rotate(-1.1deg);
+  background:var(--marigold);
+  border-block:2.5px solid var(--ink-deep);
+  overflow:hidden;
+  box-shadow:0 12px 30px -18px rgba(0,0,0,.85);
+}
+.ticker{
+  display:inline-flex; white-space:nowrap; will-change:transform;
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.24em;
+  text-transform:uppercase; color:var(--ink);
+  padding:.7em 0;
+}
+.ticker span{ flex:0 0 auto; }
+
+/* ================================================================
+   STATEMENT — the sun sets on this line
+   ================================================================ */
+.statement h2{ font-size:clamp(30px,6vw,78px); }
+.statement .turn{ color:#f2593f; }
+
+/* ================================================================
+   GaiA — the wheel that steers itself
+   ================================================================ */
+.duo{
+  display:grid; grid-template-columns:1.08fr .92fr;
+  gap:clamp(32px,6vw,84px); align-items:center;
+}
+.helm{ display:grid; place-items:center; }
+.helm svg{ width:min(330px,74vw); height:auto; }
+.notes{ margin-top:2em; display:flex; flex-direction:column; gap:.1em; }
+.note{
+  display:flex; gap:1.1em; align-items:baseline;
+  padding:.85em 0; border-top:1px solid rgba(246,231,200,.16);
+  font-size:15.5px; color:var(--paper-warm);
+}
+.note b{
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--marigold);
+  flex:0 0 auto; min-width:8.5em;
+}
+
+/* ================================================================
+   TIMETABLE — the route, set like a printed schedule
+   ================================================================ */
+.timetable{ margin-top:clamp(34px,6vh,58px); border-top:2px solid var(--marigold); }
+.leg{
+  display:grid; grid-template-columns:8.5em 1fr; gap:clamp(18px,4vw,48px);
+  padding:clamp(24px,4vh,40px) 0;
+  border-bottom:1px solid rgba(246,231,200,.2);
+}
+.leg .when{
+  font-family:var(--mono); font-size:12px; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--marigold); padding-top:.5em;
+}
+.leg h3{ margin-bottom:.45em; }
+.leg.terminus .when{ color:var(--teal); }
+.leg.terminus h3{ color:var(--teal); }
+
+.gate{
+  margin-top:clamp(30px,5vh,50px); padding:clamp(24px,3.5vw,34px);
+  border:1.5px solid var(--teal);
+}
+.gate .stamp{
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--teal);
+  display:inline-block; border:1.5px solid var(--teal);
+  padding:.45em .9em; margin-bottom:1.1em;
+  --pr:-1.6deg; transform:rotate(var(--pr));
+}
+
+/* ================================================================
+   THE TEN SEATS — actual bus tickets, printed on cream stock.
+   Dealt onto the table as you arrive; each one answers your hand.
+   ================================================================ */
+.tickets{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr));
+  gap:clamp(15px,2vw,22px); margin-top:clamp(38px,6vh,62px);
+}
+.ticket{
+  position:relative; display:grid; grid-template-columns:3.6em 1fr;
+  background:var(--paper); color:var(--ink);
+  min-height:132px; isolation:isolate;
+  transform:rotate(var(--tilt,0deg));
+}
+.js .ticket{
+  transform:rotate(calc(var(--tilt,0deg) + 4deg)) translateY(46px) scale(.96);
+  transition:transform .9s cubic-bezier(.16,.84,.28,1), box-shadow .35s ease;
+}
+.js .ticket.lit{
+  transform:perspective(700px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))
+            rotate(var(--tilt,0deg)) translateY(var(--lift,0px));
+}
+.js .ticket.lit:hover{ --lift:-7px;
+  box-shadow:0 18px 38px -18px rgba(0,0,0,.7); }
+.js .ticket.tilting{ transition:box-shadow .35s ease; }
+.ticket .face{ position:relative; overflow:hidden; }
+.ticket .face::after{
+  content:""; position:absolute; inset:-20%;
+  background:linear-gradient(104deg, transparent 34%, rgba(255,255,255,.55) 48%, transparent 60%);
+  transform:translateX(-130%); transition:transform .8s ease; pointer-events:none;
+}
+.ticket:hover .face::after{ transform:translateX(130%); }
+/* the perforated stub edge */
+.ticket .stub{
+  border-right:2px dashed rgba(20,16,43,.4);
+  display:flex; align-items:center; justify-content:center;
+  background:var(--paper-warm);
+}
+.ticket .stub span{
+  font-family:var(--mono); font-size:12.5px; font-weight:700;
+  letter-spacing:.2em; writing-mode:vertical-rl; transform:rotate(180deg);
+  font-variant-numeric:tabular-nums;
+}
+.ticket .face{ padding:18px 20px 20px; }
+.ticket h3{ font-size:clamp(19px,2vw,23px); margin-bottom:.3em; }
+.ticket p{ font-size:14px; line-height:1.5; color:rgba(20,16,43,.78); max-width:32ch; }
+/* punch-holes, cut out of the card */
+.ticket::before,.ticket::after{
+  content:""; position:absolute; left:3.6em; width:15px; height:15px;
+  background:rgba(8,6,22,.82); border-radius:50%; margin-left:-7.5px; z-index:2;
+}
+.ticket::before{ top:-7.5px; } .ticket::after{ bottom:-7.5px; }
+
+/* ================================================================
+   FARE TABLE — who meets whom
+   ================================================================ */
+.fares{ margin-top:clamp(36px,6vh,58px); border-top:2px solid var(--paper); }
+.fare{
+  display:grid; grid-template-columns:4.2em 1fr 12em;
+  gap:clamp(16px,3vw,40px); align-items:start;
+  padding:clamp(24px,3.6vh,36px) 0;
+  border-bottom:1px solid rgba(246,231,200,.2);
+}
+.fare .class{
+  font-family:var(--mono); font-size:12px; letter-spacing:.18em;
+  text-transform:uppercase; padding-top:.55em; color:var(--marigold);
+}
+.fare h3 em{ font-style:normal; color:var(--marigold); }
+.fare p{ margin-top:.4em; font-size:15.5px; }
+.fare .price{
+  font-family:var(--mono); font-size:12px; letter-spacing:.16em;
+  text-transform:uppercase; text-align:right; padding-top:.6em;
+  color:var(--teal); font-variant-numeric:tabular-nums;
+}
+.fare.top h3 em{ color:var(--teal); }
+.fare.top .class{ color:var(--teal); }
+@media(max-width:760px){
+  .fare{ grid-template-columns:4.2em 1fr; }
+  .fare .price{ grid-column:2; text-align:left; padding-top:.8em; }
+}
+.thesis{
+  margin-top:clamp(34px,5vh,56px);
+  font-family:var(--display); font-size:clamp(20px,3vw,34px);
+  line-height:1.24; max-width:26ch;
+}
+.thesis .a{ color:var(--teal); } .thesis .b{ color:var(--marigold); }
+
+/* ================================================================
+   FINALE
+   ================================================================ */
+.finale{ text-align:center; }
+.finale h2{ font-size:clamp(34px,7.4vw,92px); }
+.finale .mark{ color:var(--marigold); }
+.finale .come{
+  font-family:var(--display); font-size:clamp(19px,3vw,32px);
+  margin:1.1em auto 0; max-width:22ch; color:var(--paper-warm);
+}
+.board{
+  display:inline-block; margin-top:2.2em;
+  font-family:var(--display); font-size:clamp(19px,2.4vw,26px);
+  color:var(--ink); background:var(--marigold);
+  padding:.62em 1.8em; text-decoration:none;
+  border:2px solid var(--ink-deep);
+  box-shadow:7px 7px 0 0 var(--vermilion-solid);
+  transition:transform .3s cubic-bezier(.2,.9,.3,1.4), box-shadow .18s ease;
+}
+.board:hover{ box-shadow:4px 4px 0 0 var(--vermilion-solid); }
+.board:active{ box-shadow:1px 1px 0 0 var(--vermilion-solid); }
+.board:focus-visible{ outline:3px solid var(--teal); outline-offset:4px; }
+
+/* ================================================================
+   THE SMALL PRINT — consent and privacy, pinned up at the campsite.
+   Native <details> drop-downs, so every answer opens with or
+   without scripting.
+   ================================================================ */
+.faq{ text-align:left; }
+.faq-part{
+  margin-top:clamp(44px,7vh,74px);
+  font-family:var(--display); font-size:clamp(19px,2.4vw,26px);
+  color:var(--marigold);
+}
+.updated{
+  margin-top:.9em; font-family:var(--mono); font-size:11.5px;
+  letter-spacing:.2em; text-transform:uppercase; color:rgba(246,231,200,.5);
+}
+.faqs{ margin-top:1.4em; border-top:2px solid var(--marigold); }
+.qa{ border-bottom:1px solid rgba(246,231,200,.2); }
+.qa summary{
+  list-style:none; cursor:pointer;
+  display:flex; align-items:baseline; gap:1em;
+  padding:1.15em 0;
+  font-family:var(--display); font-size:clamp(16.5px,2vw,21px);
+  color:var(--paper-warm);
+  transition:color .25s ease;
+}
+.qa summary::-webkit-details-marker{ display:none; }
+.qa summary:hover{ color:var(--paper); }
+.qa summary:focus-visible{ outline:3px solid var(--teal); outline-offset:3px; }
+/* the punch-mark: an empty ring, inked once the question is opened */
+.qa summary::before{
+  content:""; flex:0 0 auto; width:13px; height:13px; border-radius:50%;
+  border:2px solid var(--marigold); transform:translateY(1px);
+  transition:background .3s ease, box-shadow .3s ease;
+}
+.qa[open] summary::before{
+  background:var(--marigold); box-shadow:0 0 9px rgba(240,169,29,.7);
+}
+.qa[open] summary{ color:var(--paper); }
+.qa-body{ padding:0 0 1.6em 2.05em; max-width:70ch; color:rgba(246,231,200,.72); }
+.qa-body p{ margin:0 0 .9em; }
+.qa-body p:last-child{ margin-bottom:0; }
+.qa-body b{ color:var(--paper-warm); }
+.js .qa[open] .qa-body{ animation:unfold .45s cubic-bezier(.16,.84,.28,1); }
+@keyframes unfold{
+  from{ opacity:0; transform:translateY(-8px); }
+  to  { opacity:1; transform:none; }
+}
+.qa-table{ overflow-x:auto; margin:.4em 0 1em; }
+.qa-table table{ border-collapse:collapse; width:100%; min-width:560px; font-size:14px; }
+.qa-table th{
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--marigold); text-align:left;
+  padding:.5em 1.2em .5em 0; border-bottom:1.5px solid rgba(240,169,29,.5);
+}
+.qa-table td{
+  padding:.7em 1.2em .7em 0; vertical-align:top;
+  border-bottom:1px solid rgba(246,231,200,.14); color:rgba(246,231,200,.72);
+}
+.rights{ margin:.2em 0 1em; padding:0; list-style:none; }
+.rights li{
+  padding:.55em 0; border-bottom:1px solid rgba(246,231,200,.12);
+}
+.rights li:last-child{ border-bottom:0; }
+.consent{
+  margin-top:clamp(26px,4vh,40px); padding:clamp(20px,3vw,30px);
+  border:1.5px solid var(--marigold);
+}
+.consent-actions{
+  display:flex; gap:1.6em; align-items:center; flex-wrap:wrap;
+  margin-top:1.4em;
+}
+.consent .board{ margin-top:0; }
+.notnow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:.18em;
+  text-transform:uppercase; color:rgba(246,231,200,.65);
+  text-decoration:none; padding-bottom:.25em;
+  border-bottom:1.5px dashed rgba(246,231,200,.4);
+  transition:color .25s ease, border-color .25s ease;
+}
+.notnow:hover{ color:var(--paper); border-color:var(--paper); }
+.notnow:focus-visible{ outline:3px solid var(--teal); outline-offset:3px; }
+
+/* the clearing at the end of the road — at the very foot of the page,
+   bedded into the dark near band of the landscape, clear of the ribbon.
+   The section itself lets the pointer through, so the parked camper on
+   the layer beneath can be hovered; only the hot spots catch it. */
+.chapter.campsec{ text-align:center; padding-bottom:52px; pointer-events:none; }
+.campsec .camp{ margin-bottom:0; }
+
+/* hover notes pitched over the dome and the Telegram tent, poured in
+   the same glass as the reading panels */
+#domeHot, #tgHot{ pointer-events:auto; cursor:pointer; }
+.campnote{
+  position:absolute; top:89%; opacity:0; pointer-events:none;
+  transform:translate(-50%,-6px); white-space:nowrap;
+  padding:.6em 1em; border-radius:14px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+  color:var(--paper);
+  background:linear-gradient(150deg,
+    rgba(var(--lg-tint),calc(var(--lg-tint-opacity) + .08)),
+    rgba(var(--lg-tint),var(--lg-tint-opacity)));
+  -webkit-backdrop-filter:blur(10px) saturate(160%);
+          backdrop-filter:blur(10px) saturate(160%);
+  box-shadow:0 18px 40px -24px rgba(0,0,0,.8), inset 0 1px 0 var(--lg-hairline);
+  transition:opacity .3s ease, transform .3s ease;
+}
+.campnote.on{ opacity:1; transform:translate(-50%,4px); }
+#noteDome{ left:17%; }
+#noteTg{ left:78%; }
+#noteBus{ left:45%; top:84%; }
+/* an invisible parking bay over her spot — the camper herself lives on
+   the road layer beneath the content, so this catches the hover */
+#busHot{
+  position:absolute; left:45%; top:70%;
+  width:132px; height:86px; transform:translate(-50%,-56%);
+  pointer-events:auto; cursor:pointer;
+}
+
+/* the sound control lives in the ribbon — no AudioContext, no
+   oscillator, no sound of any kind exists until this is pressed */
+.soundtoggle{
+  display:flex; align-items:center; gap:.7em;
+  background:none; border:0; padding:5px 2px; cursor:pointer;
+  font-family:var(--mono); font-size:11px; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--paper);
+  transition:color .3s ease;
+}
+.soundtoggle::before{
+  content:""; width:9px; height:9px; border-radius:50%;
+  border:1.5px solid rgba(246,231,200,.55);
+  transition:background .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+.soundtoggle.on{ color:var(--marigold); }
+.soundtoggle.on::before{
+  background:var(--marigold); border-color:var(--marigold);
+  box-shadow:0 0 8px rgba(240,169,29,.8);
+}
+.soundtoggle:focus-visible{ outline:3px solid var(--teal); outline-offset:3px; }
+
+@media(max-width:720px){
+  .wrap{ padding-left:64px; }
+}
+@media(max-width:840px){
+  .duo{ grid-template-columns:1fr; }
+  .leg{ grid-template-columns:1fr; gap:.4em; }
+  .note{ flex-direction:column; gap:.2em; }
+  .note b{ min-width:0; }
+}
+
+/* ---------------- reduced motion: the world holds still ---------------- */
+@media (prefers-reduced-motion: reduce){
+  .js .reveal > *{ transform:none; transition:none; }
+  .js .fade{ opacity:1; transition:none; }
+  .js .fade .punch{ opacity:1; animation:none; transform:rotate(var(--pr,0deg)); }
+  .js .ticket, .js .ticket.lit{ transform:rotate(var(--tilt,0deg)); transition:none; }
+  .ticket .face::after{ display:none; }
+  .passed .badge-pulse{ animation:none; }
+  .js .cue-line{ animation:none; }
+  .campnote{ transition:none; }
+  .js .peace{ animation:none; }
+  .wstw{ animation:none; opacity:1; }
+  .ticket, .board{ transition:none; }
+  .js .ribbon{ opacity:1; transition:none; }
+  .js .qa[open] .qa-body{ animation:none; }
+  .rb-meter i{ transition:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================ THE WORLD ============================ -->
+<div class="world" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="body-sun"></div>
+  <div class="body-moon"></div>
+  <canvas id="fx"></canvas>
+</div>
+
+<div class="page">
+<div class="spine" aria-hidden="true">
+  <svg id="spineSvg" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="litInk" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#10907e"/>
+        <stop offset=".55" stop-color="#f0a91d"/>
+        <stop offset="1" stop-color="#e04531"/>
+      </linearGradient>
+      <clipPath id="travelled"><rect id="travelClip" x="0" y="0" width="0" height="0"/></clipPath>
+      <linearGradient id="beamThrow" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#f0a91d" stop-opacity=".5"/>
+        <stop offset="1" stop-color="#f0a91d" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+
+    <path id="roadBase"  class="road-base"></path>
+    <path id="roadLit"   class="road-lit" clip-path="url(#travelled)"></path>
+
+    <g id="badgeG"></g>
+
+    <!-- the traveller: a side-view bus with her nose kept in line with
+         the road. Travelling right-to-left she mirrors across the path,
+         so she is never upside down. -->
+    <g id="traveller" role="img" aria-label="The camper, travelling the route">
+      <g id="tvBeam" opacity="0">
+        <path d="M34,0 L98,-24 L98,24 Z" fill="url(#beamThrow)"/>
+      </g>
+      <g id="tvBody">
+        <ellipse cx="0" cy="22" rx="36" ry="7" fill="#0a0a1e" opacity=".45"/>
+        <!-- roof rack and the luggage -->
+        <rect x="-26" y="-26.5" width="46" height="3" rx="1.5" fill="#14102b"/>
+        <rect x="-24" y="-34" width="21" height="9" rx="4.5" fill="#bd2168" stroke="#14102b" stroke-width="2.4"/>
+        <rect x="1" y="-32" width="17" height="7" rx="3.5" fill="#10907e" stroke="#14102b" stroke-width="2.4"/>
+        <!-- body: cream over vermilion -->
+        <path d="M-36,-8 C-36,-18 -30,-24 -20,-24 L22,-24 C32,-24 38,-16 38,-6 L38,8
+                 C38,13 35,15 30,15 L-31,15 C-35,15 -36,12 -36,8 Z"
+              fill="#f6e7c8" stroke="#14102b" stroke-width="2.8"/>
+        <path d="M-36,2 L38,2 L38,8 C38,13 35,15 30,15 L-31,15 C-35,15 -36,12 -36,8 Z"
+              fill="#e04531" stroke="#14102b" stroke-width="2.8"/>
+        <!-- the teal wave along the beltline -->
+        <path d="M-35,2 C-26,-1 -16,5 -6,2 C4,-1 14,5 24,2 C29,0.5 34,1 37,2"
+              fill="none" stroke="#10907e" stroke-width="3" stroke-linecap="round"/>
+        <!-- windows, and the sloped screen at the nose -->
+        <rect x="-30" y="-19.5" width="16" height="12.5" rx="3" fill="#7fb6d9" stroke="#14102b" stroke-width="2.4"/>
+        <rect x="-10" y="-19.5" width="16" height="12.5" rx="3" fill="#7fb6d9" stroke="#14102b" stroke-width="2.4"/>
+        <rect x="10" y="-19.5" width="13" height="12.5" rx="3" fill="#7fb6d9" stroke="#14102b" stroke-width="2.4"/>
+        <path d="M27,-19 C33,-17 36,-12 37,-7" fill="none" stroke="#14102b" stroke-width="2.2"/>
+        <!-- the V badge, and a headlamp -->
+        <circle cx="30" cy="-2" r="4.4" fill="#f6e7c8" stroke="#14102b" stroke-width="2"/>
+        <path d="M27.8,-4 L30,0.4 L32.2,-4" fill="none" stroke="#14102b" stroke-width="1.7"/>
+        <circle cx="34.5" cy="7" r="3" fill="#f0a91d" stroke="#14102b" stroke-width="2"/>
+        <!-- flower decals -->
+        <g transform="translate(-17,8)">
+          <g fill="#f6e7c8">
+            <circle cx="0" cy="-2.7" r="1.9"/><circle cx="2.6" cy="-0.8" r="1.9"/>
+            <circle cx="1.6" cy="2.2" r="1.9"/><circle cx="-1.6" cy="2.2" r="1.9"/>
+            <circle cx="-2.6" cy="-0.8" r="1.9"/>
+          </g>
+          <circle r="1.7" fill="#f0a91d"/>
+        </g>
+        <g transform="translate(8,8) scale(.85)">
+          <g fill="#f6e7c8">
+            <circle cx="0" cy="-2.7" r="1.9"/><circle cx="2.6" cy="-0.8" r="1.9"/>
+            <circle cx="1.6" cy="2.2" r="1.9"/><circle cx="-1.6" cy="2.2" r="1.9"/>
+            <circle cx="-2.6" cy="-0.8" r="1.9"/>
+          </g>
+          <circle r="1.7" fill="#f0a91d"/>
+        </g>
+        <!-- spoked wheels that genuinely roll -->
+        <g>
+          <circle cx="-20" cy="15" r="8.5" fill="#14102b"/>
+          <circle cx="-20" cy="15" r="3.8" fill="#ecd6ae"/>
+          <g id="whA" stroke="#14102b" stroke-width="1.5">
+            <line x1="-20" y1="11.6" x2="-20" y2="18.4"/>
+            <line x1="-23.4" y1="15" x2="-16.6" y2="15"/>
+          </g>
+          <circle cx="22" cy="15" r="8.5" fill="#14102b"/>
+          <circle cx="22" cy="15" r="3.8" fill="#ecd6ae"/>
+          <g id="whB" stroke="#14102b" stroke-width="1.5">
+            <line x1="22" y1="11.6" x2="22" y2="18.4"/>
+            <line x1="18.6" y1="15" x2="25.4" y2="15"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </svg>
+</div>
+
+<div class="grain" id="grain" aria-hidden="true"></div>
+
+<!-- the foreground: at the end of the road the telegraph poles step in
+     front, and the campsite sits behind the wires -->
+<div class="fore" aria-hidden="true"><canvas id="fg"></canvas></div>
+
+<!-- the ribbon: speed and sound in one slim strip at the screen's foot -->
+<div class="ribbon">
+  <div class="rb-speed" aria-hidden="true">
+    <span class="lab">Vybes/hour</span>
+    <span class="val" id="dSpd">0</span>
+    <span class="rb-meter"><i id="spdBar"></i></span>
+  </div>
+  <button class="soundtoggle" id="soundToggle" type="button" aria-pressed="false">Sound off</button>
+</div>
+
+<main>
+
+  <!-- ============================ HERO ============================ -->
+  <header class="hero wrap" data-road>
+    <h1>
+      <span class="reveal"><span class="misreg" data-ink="There's a camper named GaiA">There's a camper named GaiA</span></span>
+      <span class="reveal s1"><span class="second">leaving from your neighbourhood.</span></span>
+      <span class="reveal s2"><span class="third">And she's got a seat with your AI-twin's name on it!</span></span>
+    </h1>
+
+    <div class="fade s3">
+      <div class="strip">
+        <span class="punch" style="--pd:.05s">Room for ten twins</span><span class="punch" style="--pd:.16s">Windows down</span><span class="punch" style="--pd:.27s">Departing soon</span>
+      </div>
+    </div>
+
+    <div class="cue fade s3" aria-hidden="true">
+      <span class="cue-line"></span>The roadtrip starts here
+    </div>
+  </header>
+
+  <!-- the departure board crawls past on its own strip of paper -->
+  <div class="tickerwrap" id="tickerWrap" aria-hidden="true">
+    <div class="ticker" id="ticker">
+      <span>The Vybable Mystery Tour&nbsp;&nbsp;✶&nbsp;&nbsp;Departing your neighbourhood soon&nbsp;&nbsp;✶&nbsp;&nbsp;Space for 10 AI-twins&nbsp;✶&nbsp;Guided by GaiA&nbsp;&nbsp;✶&nbsp;Powered by your skills&nbsp;&nbsp;✶&nbsp;&nbsp;</span><span>The Vybable Mystery Tour&nbsp;&nbsp;✶&nbsp;&nbsp;Departing your neighbourhood soon&nbsp;&nbsp;✶&nbsp;&nbsp;Space for 10 AI-twins&nbsp;✶&nbsp;Guided by GaiA&nbsp;&nbsp;✶&nbsp;Powered by your skills&nbsp;&nbsp;✶&nbsp;&nbsp;</span><span>The Vybable Mystery Tour&nbsp;&nbsp;✶&nbsp;&nbsp;Departing your neighbourhood soon&nbsp;&nbsp;✶&nbsp;&nbsp;Space for 10 AI-twins&nbsp;✶&nbsp;Guided by GaiA&nbsp;&nbsp;✶&nbsp;Powered by your skills&nbsp;&nbsp;✶&nbsp;&nbsp;</span><span>The Vybable Mystery Tour&nbsp;&nbsp;✶&nbsp;&nbsp;Departing your neighbourhood soon&nbsp;&nbsp;✶&nbsp;&nbsp;Space for 10 AI-twins&nbsp;✶&nbsp;Guided by GaiA&nbsp;&nbsp;✶&nbsp;Powered by your skills&nbsp;&nbsp;✶&nbsp;&nbsp;</span>
+    </div>
+  </div>
+
+  <!-- ============================ STATEMENT ============================ -->
+  <section class="chapter statement wrap" data-road>
+    <div class="liquid-glass">
+      <h2>
+        <span class="reveal"><span>You've held the room for years.</span></span>
+        <span class="reveal s1"><span>You might be the best in your neighbourhood</span></span>
+        <span class="reveal s2"><span>at the particular thing you do.</span></span>
+        <span class="reveal s3"><span class="turn">And still — the reach ends where the day ends.</span></span>
+      </h2>
+      <p class="lead fade" style="margin-top:1.7em;">
+        Only so many hours, only so many mats. The wisdom you've spent years gathering serves
+        the few who find you. We think that's a waste. Not of money — of <em>you</em>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ GaiA ============================ -->
+  <section class="chapter wrap" data-road id="gaia">
+    <div class="duo">
+      <div>
+        <p class="slug fade" data-stop="plain" data-label="MEET GAIA">The camper has a name</p>
+        <h2 class="fade s1" style="margin-top:.7em;">
+          She's called GaiA — and she drives herself.
+        </h2>
+        <p class="lead fade s2" style="margin-top:1.1em;">
+          Not so you can be replaced. So you can turn around. She takes the wheel of the
+          miles — the tireless logistics, the 2 a.m. availability, the safe conduct of every
+          conversation — so the whole crew is freed <em>into</em> the work rather than out of it.
+          Nobody up front staring at the road. Everybody present.
+        </p>
+
+        <div class="notes fade s3">
+          <div class="note"><b>She drives</b><span>The shared road, the miles between towns, the chassis under all of it.</span></div>
+          <div class="note"><b>You steer</b><span>Your voice, your lineage, your judgement about what the person in front of you needs.</span></div>
+          <div class="note"><b>Never freight</b><span>Passengers by choice, sovereign over their own practice. A guide, never a stand-in.</span></div>
+        </div>
+      </div>
+
+      <figure class="screen fade s2" style="margin:0;">
+        <svg viewBox="0 0 420 340" aria-hidden="true">
+          <defs>
+            <clipPath id="glass">
+              <path d="M34,34 L198,28 L198,182 L34,176 Z"/>
+              <path d="M222,28 L386,34 L386,176 L222,182 Z"/>
+            </clipPath>
+            <linearGradient id="nightRoad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#4a2a7a"/><stop offset="1" stop-color="#14102b"/>
+            </linearGradient>
+            <clipPath id="mirrorClip"><rect x="166" y="7" width="90" height="22" rx="7"/></clipPath>
+          </defs>
+
+          <!-- what is through the glass: the road running to the horizon.
+               The engine animates the centre line, the hills and the stars. -->
+          <g clip-path="url(#glass)">
+            <rect x="20" y="14" width="380" height="200" fill="#1b1440"/>
+            <g id="wsStars" opacity=".4">
+              <circle cx="300" cy="66" r="21" fill="#f6e7c8" opacity=".9"/>
+              <g fill="#f6e7c8">
+                <circle class="wstw" style="animation-delay:0s"    cx="80"  cy="52" r="1.7"/>
+                <circle class="wstw" style="animation-delay:-.7s"  cx="132" cy="40" r="1.3"/>
+                <circle class="wstw" style="animation-delay:-1.4s" cx="196" cy="62" r="1.5"/>
+                <circle class="wstw" style="animation-delay:-2.1s" cx="246" cy="44" r="1.2"/>
+                <circle class="wstw" style="animation-delay:-.4s"  cx="350" cy="88" r="1.5"/>
+                <circle class="wstw" style="animation-delay:-1.8s" cx="108" cy="86" r="1.2"/>
+                <circle class="wstw" style="animation-delay:-1.1s" cx="58"  cy="30" r="1.2"/>
+                <circle class="wstw" style="animation-delay:-2.5s" cx="160" cy="24" r="1.4"/>
+                <circle class="wstw" style="animation-delay:-.9s"  cx="228" cy="28" r="1.1"/>
+                <circle class="wstw" style="animation-delay:-1.6s" cx="270" cy="80" r="1.3"/>
+                <circle class="wstw" style="animation-delay:-2.3s" cx="330" cy="34" r="1.2"/>
+                <circle class="wstw" style="animation-delay:-.2s"  cx="376" cy="58" r="1.4"/>
+              </g>
+            </g>
+            <!-- the occasional shooting star, streaking through the glass -->
+            <g id="wsShoot" opacity="0">
+              <line x1="0" y1="0" x2="26" y2="-11" stroke="#f6e7c8" stroke-width="1.6" stroke-linecap="round"/>
+            </g>
+            <!-- a far ridge, drifting slowest, its high peaks catching light -->
+            <g id="wsMtns">
+              <path fill="#261c54" d="M-380,230 L-380,100 L-310,58 L-240,96 L-180,74
+                L-110,104 L-40,62 L0,100 L70,58 L140,96 L200,74 L270,104 L340,62 L380,100
+                L450,58 L520,96 L580,74 L650,104 L720,62 L760,100 L760,230 Z"/>
+              <g fill="rgba(246,231,200,.2)">
+                <path d="M-320,68 L-310,58 L-300,68 Z"/><path d="M-50,72 L-40,62 L-30,72 Z"/>
+                <path d="M60,68 L70,58 L80,68 Z"/><path d="M330,72 L340,62 L350,72 Z"/>
+                <path d="M440,68 L450,58 L460,68 Z"/><path d="M710,72 L720,62 L730,72 Z"/>
+              </g>
+            </g>
+            <path id="wsHills" fill="#241a3e" d="M-380,230 L-380,112
+              Q-350,94 -316,112 L-250,112 Q-220,102 -188,112 L-130,112 Q-98,90 -62,112 L0,112
+              Q30,94 64,112 L130,112 Q160,102 192,112 L250,112 Q282,90 318,112 L380,112
+              Q410,94 444,112 L510,112 Q540,102 572,112 L630,112 Q662,90 698,112 L760,112
+              L760,230 Z"/>
+            <!-- roadside woods, drifting quick -->
+            <g id="wsTrees" fill="#1a1333">
+              <path d="M30,116 L38,92 L46,116 Z"/><path d="M64,117 L70,100 L76,117 Z"/>
+              <path d="M104,115 L112,88 L120,115 Z"/><path d="M150,114 L160,86 L170,114 Z"/>
+              <path d="M188,117 L194,102 L200,117 Z"/><path d="M228,115 L236,90 L244,115 Z"/>
+              <path d="M262,117 L269,98 L276,117 Z"/><path d="M300,116 L308,88 L316,116 Z"/>
+              <path d="M330,115 L339,90 L348,115 Z"/><path d="M372,117 L378,101 L384,117 Z"/>
+              <path d="M410,116 L418,92 L426,116 Z"/><path d="M448,117 L455,99 L462,117 Z"/>
+              <path d="M494,115 L502,87 L510,115 Z"/><path d="M530,114 L540,86 L550,114 Z"/>
+              <path d="M572,117 L578,102 L584,117 Z"/><path d="M610,115 L618,90 L626,115 Z"/>
+              <path d="M642,117 L649,98 L656,117 Z"/><path d="M680,116 L688,88 L696,116 Z"/>
+              <path d="M710,115 L719,90 L728,115 Z"/><path d="M748,117 L754,101 L760,117 Z"/>
+              <path d="M-350,116 L-342,92 L-334,116 Z"/><path d="M-316,117 L-310,100 L-304,117 Z"/>
+              <path d="M-276,115 L-268,88 L-260,115 Z"/><path d="M-230,114 L-220,86 L-210,114 Z"/>
+              <path d="M-192,117 L-186,102 L-180,117 Z"/><path d="M-152,115 L-144,90 L-136,115 Z"/>
+              <path d="M-118,117 L-111,98 L-104,117 Z"/><path d="M-80,116 L-72,88 L-64,116 Z"/>
+              <path d="M-50,115 L-41,90 L-32,115 Z"/><path d="M-8,117 L-2,101 L4,117 Z"/>
+            </g>
+            <!-- telegraph poles keeping pace at the road's edge -->
+            <g id="wsPoles">
+              <g stroke="#120c26" fill="none">
+                <path d="M-670,76 Q-480,88 -290,76 Q-100,88 90,76 Q280,88 470,76 Q660,88 850,76" stroke-width="1.6"/>
+                <path d="M-670,82 Q-480,93 -290,82 Q-100,93 90,82 Q280,93 470,82 Q660,93 850,82" stroke-width="1.3"/>
+              </g>
+              <g fill="#120c26">
+                <rect x="-292.5" y="70" width="5" height="52"/><rect x="-302" y="73" width="24" height="3.5"/>
+                <rect x="87.5" y="70" width="5" height="52"/><rect x="78" y="73" width="24" height="3.5"/>
+                <rect x="467.5" y="70" width="5" height="52"/><rect x="458" y="73" width="24" height="3.5"/>
+                <rect x="847.5" y="70" width="5" height="52"/><rect x="838" y="73" width="24" height="3.5"/>
+              </g>
+            </g>
+            <!-- the road winds — a proper S sweeping right then home -->
+            <path d="M110,214 C170,180 255,168 240,142 C228,124 200,120 202,106
+                     L212,106 C218,118 260,132 258,150 C256,170 320,196 345,214 Z"
+                  fill="url(#nightRoad)"/>
+            <!-- daisies on the centre line, rushing up to meet you -->
+            <g id="wsRoad">
+              <g class="wsd" transform="translate(223,118) scale(.7)"><g fill="#f6e7c8">
+                <circle cx="0" cy="-2.2" r="1.6"/><circle cx="2.1" cy="-0.7" r="1.6"/>
+                <circle cx="1.3" cy="1.8" r="1.6"/><circle cx="-1.3" cy="1.8" r="1.6"/>
+                <circle cx="-2.1" cy="-0.7" r="1.6"/></g><circle r="1.5" fill="#f0a91d"/></g>
+              <g class="wsd" transform="translate(242,140) scale(1.3)"><g fill="#f6e7c8">
+                <circle cx="0" cy="-2.2" r="1.6"/><circle cx="2.1" cy="-0.7" r="1.6"/>
+                <circle cx="1.3" cy="1.8" r="1.6"/><circle cx="-1.3" cy="1.8" r="1.6"/>
+                <circle cx="-2.1" cy="-0.7" r="1.6"/></g><circle r="1.5" fill="#f0a91d"/></g>
+              <g class="wsd" transform="translate(241,160) scale(1.9)"><g fill="#f6e7c8">
+                <circle cx="0" cy="-2.2" r="1.6"/><circle cx="2.1" cy="-0.7" r="1.6"/>
+                <circle cx="1.3" cy="1.8" r="1.6"/><circle cx="-1.3" cy="1.8" r="1.6"/>
+                <circle cx="-2.1" cy="-0.7" r="1.6"/></g><circle r="1.5" fill="#f0a91d"/></g>
+              <g class="wsd" transform="translate(230,176) scale(2.4)"><g fill="#f6e7c8">
+                <circle cx="0" cy="-2.2" r="1.6"/><circle cx="2.1" cy="-0.7" r="1.6"/>
+                <circle cx="1.3" cy="1.8" r="1.6"/><circle cx="-1.3" cy="1.8" r="1.6"/>
+                <circle cx="-2.1" cy="-0.7" r="1.6"/></g><circle r="1.5" fill="#f0a91d"/></g>
+            </g>
+          </g>
+
+          <!-- the split-screen cab: body-coloured frame with its centre
+               pillar, rubber seals round each pane -->
+          <path fill-rule="evenodd" fill="#f0a91d" stroke="#14102b" stroke-width="3"
+                d="M30,14 H390 Q400,14 400,24 V186 Q400,196 390,196 H30 Q20,196 20,186 V24 Q20,14 30,14 Z
+                   M34,34 L198,28 L198,182 L34,176 Z
+                   M222,28 L386,34 L386,176 L222,182 Z"/>
+          <g fill="none" stroke="#14102b" stroke-width="3">
+            <path d="M34,34 L198,28 L198,182 L34,176 Z"/>
+            <path d="M222,28 L386,34 L386,176 L222,182 Z"/>
+          </g>
+          <!-- wipers, parked -->
+          <g stroke="#14102b" stroke-width="3" stroke-linecap="round">
+            <line x1="58" y1="176" x2="148" y2="166"/>
+            <line x1="70" y1="172" x2="150" y2="163"/>
+            <line x1="242" y1="178" x2="332" y2="168"/>
+            <line x1="254" y1="174" x2="334" y2="165"/>
+          </g>
+          <!-- the dash: the same mustard tin as the frame -->
+          <rect x="10" y="196" width="400" height="144" fill="#f0a91d"/>
+          <rect x="10" y="196" width="400" height="9" fill="#d99414"/>
+          <path d="M10,196 H410" stroke="#14102b" stroke-width="4"/>
+          <!-- the driver's dial, reading vybes -->
+          <circle cx="84" cy="244" r="21" fill="#f6e7c8" stroke="#14102b" stroke-width="3"/>
+          <g stroke="#14102b" stroke-width="2">
+            <line x1="84" y1="226" x2="84" y2="232"/>
+            <line x1="70" y1="236" x2="75" y2="239"/>
+            <line x1="98" y1="236" x2="93" y2="239"/>
+          </g>
+          <line x1="84" y1="244" x2="76" y2="233" stroke="#e04531" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="84" cy="244" r="3" fill="#14102b"/>
+          <circle cx="84" cy="288" r="7" fill="#ecd6ae" stroke="#14102b" stroke-width="2.5"/>
+          <!-- vent grille, knobs, and the radio -->
+          <rect x="296" y="214" width="94" height="24" rx="6" fill="#e39a12" stroke="#14102b" stroke-width="2.5"/>
+          <g stroke="#14102b" stroke-width="2">
+            <line x1="304" y1="221" x2="382" y2="221"/>
+            <line x1="304" y1="227" x2="382" y2="227"/>
+            <line x1="304" y1="233" x2="382" y2="233"/>
+          </g>
+          <circle cx="312" cy="262" r="7" fill="#ecd6ae" stroke="#14102b" stroke-width="2.5"/>
+          <circle cx="348" cy="262" r="7" fill="#ecd6ae" stroke="#14102b" stroke-width="2.5"/>
+          <rect x="296" y="284" width="94" height="24" rx="5" fill="#e39a12" stroke="#14102b" stroke-width="2.5"/>
+          <rect x="306" y="292" width="52" height="7" rx="3.5" fill="#14102b"/>
+          <circle cx="374" cy="296" r="5" fill="#ecd6ae" stroke="#14102b" stroke-width="2"/>
+          <!-- a daisy for the dash -->
+          <g transform="translate(140,306)">
+            <g fill="#f6e7c8">
+              <circle cx="0" cy="-4" r="2.8"/><circle cx="3.8" cy="-1.2" r="2.8"/>
+              <circle cx="2.4" cy="3.3" r="2.8"/><circle cx="-2.4" cy="3.3" r="2.8"/>
+              <circle cx="-3.8" cy="-1.2" r="2.8"/>
+            </g>
+            <circle r="2.6" fill="#e04531"/>
+          </g>
+
+          <!-- rear-view mirror on the header, holding the wake: daisies
+               she has already left behind recede in its glass -->
+          <rect x="161" y="2" width="100" height="32" rx="9" fill="#241a3e" stroke="#14102b" stroke-width="4"/>
+          <g clip-path="url(#mirrorClip)">
+            <rect x="166" y="7" width="90" height="22" fill="#181236"/>
+            <path d="M166,29 L204,14 L218,14 L256,29 Z" fill="#2a1f48"/>
+            <g id="mvDaisies">
+              <g class="mvd" transform="translate(211,25) scale(.8)"><g fill="#f6e7c8">
+                <circle cx="0" cy="-2.2" r="1.6"/><circle cx="2.1" cy="-0.7" r="1.6"/>
+                <circle cx="1.3" cy="1.8" r="1.6"/><circle cx="-1.3" cy="1.8" r="1.6"/>
+                <circle cx="-2.1" cy="-0.7" r="1.6"/></g><circle r="1.5" fill="#f0a91d"/></g>
+              <g class="mvd" transform="translate(215,20) scale(.5)"><g fill="#f6e7c8">
+                <circle cx="0" cy="-2.2" r="1.6"/><circle cx="2.1" cy="-0.7" r="1.6"/>
+                <circle cx="1.3" cy="1.8" r="1.6"/><circle cx="-1.3" cy="1.8" r="1.6"/>
+                <circle cx="-2.1" cy="-0.7" r="1.6"/></g><circle r="1.5" fill="#f0a91d"/></g>
+              <g class="mvd" transform="translate(208,16) scale(.28)"><g fill="#f6e7c8">
+                <circle cx="0" cy="-2.2" r="1.6"/><circle cx="2.1" cy="-0.7" r="1.6"/>
+                <circle cx="1.3" cy="1.8" r="1.6"/><circle cx="-1.3" cy="1.8" r="1.6"/>
+                <circle cx="-2.1" cy="-0.7" r="1.6"/></g><circle r="1.5" fill="#f0a91d"/></g>
+            </g>
+          </g>
+          <!-- the cord down the pillar: a flower, the peace medallion,
+               another flower — as the reference has it -->
+          <line x1="211" y1="34" x2="211" y2="100" stroke="#14102b" stroke-width="2.5"/>
+          <g transform="translate(211,54)">
+            <g fill="#e04531">
+              <circle cx="-3.5" cy="-2" r="2.6"/><circle cx="3.5" cy="-2" r="2.6"/>
+              <circle cx="0" cy="3.6" r="2.6"/>
+            </g>
+            <circle r="2.4" fill="#f0a91d"/>
+          </g>
+          <g transform="translate(211,112)"><g class="peace">
+            <circle r="11" fill="none" stroke="#f0a91d" stroke-width="3.4"/>
+            <line x1="0" y1="-11" x2="0" y2="11" stroke="#f0a91d" stroke-width="3.4"/>
+            <line x1="0" y1="0" x2="-7.8" y2="7.8" stroke="#f0a91d" stroke-width="3.4"/>
+            <line x1="0" y1="0" x2="7.8" y2="7.8" stroke="#f0a91d" stroke-width="3.4"/>
+          </g></g>
+          <g transform="translate(211,134)">
+            <g fill="#bd2168">
+              <circle cx="-3.5" cy="-2" r="2.6"/><circle cx="3.5" cy="-2" r="2.6"/>
+              <circle cx="0" cy="3.6" r="2.6"/>
+            </g>
+            <circle r="2.4" fill="#f6e7c8"/>
+          </g>
+
+          <!-- the wheel, turning by itself -->
+          <g transform="translate(210,272)"><g id="helm">
+            <circle r="60" fill="none" stroke="#f6e7c8" stroke-width="13"/>
+            <circle r="60" fill="none" stroke="#14102b" stroke-width="3" opacity=".45"/>
+            <g stroke="#f6e7c8" stroke-width="11" stroke-linecap="round">
+              <line x1="0" y1="0" x2="0" y2="-54"/>
+              <line x1="0" y1="0" x2="47" y2="28"/>
+              <line x1="0" y1="0" x2="-47" y2="28"/>
+            </g>
+            <circle r="15" fill="#e04531" stroke="#14102b" stroke-width="3"/>
+            <circle r="5" fill="#f6e7c8"/>
+          </g></g>
+        </svg>
+        <figcaption>Nobody's hands on the wheel</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============================ THE ROUTE ============================ -->
+  <section class="chapter wrap" data-road id="route">
+    <div class="liquid-glass">
+    <p class="slug fade">The itinerary</p>
+    <h2 class="fade s1" style="margin-top:.7em;">
+      The road is already charted.<br>That's the point of getting on early.
+    </h2>
+
+    <div class="timetable">
+      <div class="leg fade" data-stop="lit" data-label="STOP 01 · TELEGRAM">
+        <div class="when">First stop</div>
+        <div>
+          <h3>Telegram</h3>
+          <p class="dim">We start where people already are — no app-store toll booth, no cold start.
+            The camper pulls up in a neighbourhood the world already visits daily. It's borrowed
+            road, and it's the right way to begin: the crew that boards here serves from day one.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="veil-note fade s1">Some stops you only learn when the driver's ready to tell you.</p>
+
+    <div class="veil-list fade s2">
+      <div class="veil-row" data-stop="veiled" data-label="STOP 02"><span class="moonpip"></span>Revealed at the end of Season One</div>
+      <div class="veil-row" data-stop="veiled" data-label="STOP 03"><span class="moonpip"></span>Revealed at the end of Season One</div>
+      <div class="veil-row" data-stop="veiled" data-label="STOP 04"><span class="moonpip"></span>Revealed at the end of Season One</div>
+    </div>
+
+    <div class="timetable" style="margin-top:clamp(34px,6vh,58px);">
+      <div class="leg terminus fade" data-stop="dawn" data-label="FINAL STOP · HOME GROUND">
+        <div class="when">Final stop</div>
+        <div>
+          <h3>Home ground</h3>
+          <p class="dim">At the close of Season One the camper reaches land we own — our own platform,
+            its name held back until launch. Ride the whole way and you don't arrive as a latecomer
+            to someone else's town. You arrive as founding crew, on ground built for you.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="gate fade s2">
+      <span class="stamp punch">A second gate · handled with care</span>
+      <p class="dim">Home ground has a place for the young ones — a teens-only zone, thirteen to
+        seventeen, established as its own nonprofit, because you cannot accidentally take from
+        children if the entity holding them is built so it never can. Most of the denizens there
+        will be meeting wellness practice for the very first time, and first encounters deserve
+        the most care. The camper pulls up. The wisdom steps down softly.</p>
+    </div>
+
+    <p class="lead fade s3" style="margin-top:1.6em;">
+      Borrowed road to home ground. Get in before we reach the good part.</p>
+    </div>
+  </section>
+
+  <!-- ============================ THE TEN SEATS ============================ -->
+  <section class="chapter wrap" data-road id="seats">
+    <p class="slug fade" data-stop="plain" data-label="CREW PICK-UP">The ten seats</p>
+    <h2 class="fade s1" style="margin-top:.7em;">Ten kinds of gift in one van.</h2>
+    <p class="lead fade s2" style="margin-top:1em;">
+      The invitation to every seat is the same: GaiA drives, you steer your practice,
+      the crew rides present.
+    </p>
+
+    <div class="tickets">
+      <article class="ticket fade" style="--tilt:-.4deg;"><div class="stub"><span>SEAT 01</span></div>
+        <div class="face"><h3>Yoga</h3><p>Reads the map, sets the direction. Deepest community culture, most natural on the road.</p></div></article>
+      <article class="ticket fade" style="--tilt:.35deg;"><div class="stub"><span>SEAT 02</span></div>
+        <div class="face"><h3>Fitness / PT</h3><p>Keeps the crew moving. Gets everyone out of the van at the good viewpoints.</p></div></article>
+      <article class="ticket fade" style="--tilt:-.5deg;"><div class="stub"><span>SEAT 03</span></div>
+        <div class="face"><h3>Meditation / Mindfulness</h3><p>Holds the quiet. Knows the long silent stretches are where the trip actually happens.</p></div></article>
+      <article class="ticket fade" style="--tilt:.28deg;"><div class="stub"><span>SEAT 04</span></div>
+        <div class="face"><h3>Nutrition / Health Coaching</h3><p>Packed the food, literally. Keeps the crew fuelled and honest about it.</p></div></article>
+      <article class="ticket fade" style="--tilt:.5deg;"><div class="stub"><span>SEAT 05</span></div>
+        <div class="face"><h3>Breathwork</h3><p>Sets the rhythm. Reminds everyone to roll the windows down and actually breathe.</p></div></article>
+      <article class="ticket fade" style="--tilt:-.3deg;"><div class="stub"><span>SEAT 06</span></div>
+        <div class="face"><h3>Pilates &amp; Somatic Movement</h3><p>Keeps the body kind on a long drive. The client does the moving; this seat teaches how.</p></div></article>
+      <article class="ticket fade" style="--tilt:.42deg;"><div class="stub"><span>SEAT 07</span></div>
+        <div class="face"><h3>Massage, Bodywork &amp; Acupressure</h3><p>The hands. Undoes the knots the road puts in everyone by nightfall.</p></div></article>
+      <article class="ticket fade" style="--tilt:-.45deg;"><div class="stub"><span>SEAT 08</span></div>
+        <div class="face"><h3>Herbal Medicine</h3><p>The old maps. Carries the wisdom that was here long before the motorway.</p></div></article>
+      <article class="ticket fade" style="--tilt:.3deg;"><div class="stub"><span>SEAT 09</span></div>
+        <div class="face"><h3>Creative Therapy &amp; Expressive Arts</h3><p>The songs and the stories. Turns the miles into something you'll remember.</p></div></article>
+      <article class="ticket fade" style="--tilt:-.36deg;"><div class="stub"><span>SEAT 10</span></div>
+        <div class="face"><h3>Sleep &amp; Recovery</h3><p>Takes the last watch. Makes sure everyone rests enough to go again tomorrow.</p></div></article>
+    </div>
+  </section>
+
+  <!-- ============================ FARE TABLE ============================ -->
+  <section class="chapter wrap" data-road id="access">
+    <div class="liquid-glass">
+    <p class="slug fade" data-stop="plain" data-label="CHECKPOINT">Who meets whom</p>
+    <h2 class="fade s1" style="margin-top:.7em;">Access deepens as care deepens.</h2>
+    <p class="lead fade s2" style="margin-top:1em;">
+      The more real the human contact, the higher the bar to reach it.
+    </p>
+
+    <div class="fares">
+      <div class="fare fade">
+        <div class="class">Standard</div>
+        <div>
+          <h3>Adults meet <em>the Gurus</em></h3>
+          <p class="dim">The scalable, always-on layer — a brilliant guide in your pocket, in your
+            neighbourhood, at 2 a.m. The accessible floor that lifts everyone.</p>
+        </div>
+        <div class="price">The AI twins</div>
+      </div>
+
+      <div class="fare fade s1">
+        <div class="class">Protected</div>
+        <div>
+          <h3>Teens 13–17 meet <em>personas only</em></h3>
+          <p class="dim">Never the humans, never the Gurus directly. First contact with the young and
+            the new deserves the most mediation — inside a nonprofit that structurally cannot extract.</p>
+        </div>
+        <div class="price">Most mediated</div>
+      </div>
+
+      <div class="fare top fade s2">
+        <div class="class">Premium</div>
+        <div>
+          <h3>The committed few meet <em>the humans</em></h3>
+          <p class="dim">Least mediated, most scarce, most earned. A live webcast, a special event, or
+            an in-real-world session in the practitioner's own neighbourhood studio — Melini, in
+            Melini's studio, in the 8th.</p>
+        </div>
+        <div class="price">~5% · most earned</div>
+      </div>
+    </div>
+
+    <p class="thesis fade s1">
+      The machine is the <span class="a">floor that lifts everyone.</span>
+      The human is the <span class="b">ceiling you climb toward.</span>
+    </p>
+    <p class="lead fade s2" style="margin-top:1.4em;">
+      Most of the world meets Melini's twin. The committed few meet Melini. Her Guru fills her
+      studio rather than emptying it — the twin becomes footfall for the woman.
+    </p>
+    </div>
+  </section>
+
+  <!-- ============================ FINALE ============================ -->
+  <section class="chapter finale wrap" data-road>
+    <h2>
+      <span class="reveal"><span>Ten seats.</span></span>
+      <span class="reveal s1"><span class="mark">One's yours if you want it.</span></span>
+    </h2>
+    <p class="come fade s2">
+      This isn't a platform asking you to perform. It's a road trip asking you to come as you are.
+    </p>
+    <a class="board fade s3" id="board" href="#">Jump onboard</a>
+  </section>
+
+  <!-- ============================ THE SMALL PRINT ============================ -->
+  <section class="chapter faq wrap" data-road id="smallprint">
+    <p class="slug fade">Before you board · the small print</p>
+    <h2 class="fade s1" style="margin-top:.7em;">Consent &amp; Privacy Policy</h2>
+
+    <h3 class="faq-part fade s2">Part 1: Mini FAQ</h3>
+    <div class="faqs fade s2">
+      <details class="qa">
+        <summary>What happens after hitting the VYBE MY TWIN button?</summary>
+        <div class="qa-body">
+          <p>Our automated system will scan up to 100 of your last YouTube videos, where available,
+            and up to 100 of your last public Instagram posts (nothing private, no DMs, no login
+            required), to automatically generate your prototype AI twin — what we call a v0.5
+            'ProtoTwin' — for your private review.</p>
+        </div>
+      </details>
+      <details class="qa">
+        <summary>What happens after my prototype twin is vybed?</summary>
+        <div class="qa-body">
+          <p>You guys get to hang out together for a 14-day private review period, at the end of
+            which you will be invited to move on to stage 2: the creation of your Good Vybe Guru
+            twin, requiring an additional training-run via a Q&amp;A series of voice-notes about your
+            work as a practitioner (around a dozen questions for your reply, whenever suits your
+            schedule). Importantly, you can choose to delete your ProtoTwin at any time during the
+            14-day review period with a single click, no harm no foul.</p>
+        </div>
+      </details>
+      <details class="qa">
+        <summary>Where would my final Guru twin hang out?</summary>
+        <div class="qa-body">
+          <p>Starting on Telegram, your final Good Vybe Guru will only hang out in public with your
+            prior approval, and can be retired at any stage — you are always in control.</p>
+        </div>
+      </details>
+      <details class="qa">
+        <summary>What happens to my data?</summary>
+        <div class="qa-body">
+          <p>Your data is encrypted and stored securely, we will never share it with third parties.
+            Like your voice-notes, the twin data remains yours and can be deleted at any stage.</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="consent fade s3">
+      <p class="dim">By tapping VYBE MY TWIN, you authorise Vybable Ltd., a subsidiary of
+        Maloka Labs Ltd., to collect and process your public Instagram and YouTube content for the
+        purpose described above, in accordance with our Privacy Policy (below).</p>
+      <div class="consent-actions">
+        <a class="board" href="#">VYBE MY TWIN</a>
+        <a class="notnow" href="#">Not now</a>
+      </div>
+    </div>
+
+    <h3 class="faq-part fade">Part 2: Privacy Policy</h3>
+    <p class="updated fade">Last updated: [DATE]</p>
+    <div class="faqs fade s1">
+      <details class="qa">
+        <summary>Who we are</summary>
+        <div class="qa-body">
+          <p>Vybable Ltd. is the data controller for the Good Vybe Guru programme. We are a
+            subsidiary of Maloka Labs Ltd., registered in England and Wales.</p>
+          <p>Contact: [email address]<br>Data Protection Officer: [name / email]</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>What we collect and why</summary>
+        <div class="qa-body">
+          <p>We only collect what we need to build and run your AI twin.</p>
+          <div class="qa-table">
+            <table>
+              <thead><tr><th>What</th><th>Why</th><th>Legal basis</th></tr></thead>
+              <tbody>
+                <tr><td>Your public Instagram posts (up to 100) — captions, hashtags, engagement data</td>
+                    <td>To generate your ProtoTwin</td><td>Your consent</td></tr>
+                <tr><td>Your public YouTube videos (up to 100), where available</td>
+                    <td>To generate your ProtoTwin</td><td>Your consent</td></tr>
+                <tr><td>Your voice-note responses to our Q&amp;A series (if you proceed to stage 2)</td>
+                    <td>To create your full Good Vybe Guru twin</td><td>Your consent</td></tr>
+                <tr><td>Your name and contact email</td>
+                    <td>To manage your account and communicate with you</td><td>Contractual necessity</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>We do not collect DMs, private content, login credentials, or anything
+            behind a privacy wall.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>How we use your data</summary>
+        <div class="qa-body">
+          <p>Your data is used solely to generate and operate your AI twin within the Good Vybe Guru
+            programme. We do not use it for advertising, profiling, or any purpose beyond what is
+            described in this policy.</p>
+          <p>Your ProtoTwin and Guru twin are persona layers — structured data files that sit on top
+            of our base wellness agent. They are not baked into a model. This means your data can be
+            cleanly and completely deleted at any time.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>Who we share it with</summary>
+        <div class="qa-body">
+          <p>No one. We do not sell, rent, or share your personal data with third parties.</p>
+          <p>We may use trusted infrastructure providers (hosting, encryption, storage) to operate
+            the service. Where we do, they act as data processors under contract and cannot use your
+            data for their own purposes.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>Where your data is stored</summary>
+        <div class="qa-body">
+          <p>Your data is encrypted in transit and at rest, and stored on servers located in the UK
+            and EEA. We do not transfer your data outside the UK unless required for infrastructure
+            purposes, in which case appropriate safeguards are in place. Such infrastructure purposes
+            may require that your data is also fragmented, encrypted, and distributed across our
+            decentralised infrastructure network, ThumbPIN — meaning no single server ever holds a
+            complete copy of your data, providing an additional layer of security beyond what
+            centralised servers alone can offer.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>How long we keep it</summary>
+        <div class="qa-body">
+          <div class="qa-table">
+            <table>
+              <thead><tr><th>Scenario</th><th>Retention period</th></tr></thead>
+              <tbody>
+                <tr><td>You delete your ProtoTwin during the 14-day review period</td>
+                    <td>Deleted immediately, permanently purged within 30 days</td></tr>
+                <tr><td>You proceed to a full Guru twin and later retire it</td>
+                    <td>All associated data deleted within 30 days of retirement</td></tr>
+                <tr><td>You request deletion at any other time</td>
+                    <td>Completed within 30 days of request</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>We do not keep your data after you ask us to delete it, except where we are legally
+            required to retain certain records (e.g. for tax or regulatory purposes).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>Your rights</summary>
+        <div class="qa-body">
+          <p>Under UK data protection law, you have the right to:</p>
+          <ul class="rights">
+            <li><b>Access your data</b> — ask us what we hold about you</li>
+            <li><b>Correct your data</b> — ask us to fix anything inaccurate</li>
+            <li><b>Delete your data</b> — ask us to erase it, or use the one-click delete in your dashboard</li>
+            <li><b>Withdraw consent</b> — at any time, without affecting the lawfulness of processing before withdrawal</li>
+            <li><b>Port your data</b> — receive a copy in a standard format</li>
+            <li><b>Object to processing</b> — in certain circumstances</li>
+            <li><b>Complain</b> — directly to us first, or to the Information Commissioner's Office (ICO) at ico.org.uk</li>
+          </ul>
+          <p>To exercise any of these rights, contact us at [email address]. We will respond within
+            one month.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>Cookies</summary>
+        <div class="qa-body">
+          <p>The Vybable platform uses only essential cookies required for the service to function.
+            We do not use tracking, analytics, or advertising cookies.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>Children</summary>
+        <div class="qa-body">
+          <p>The Good Vybe Guru programme is for adult wellness practitioners. We do not knowingly
+            collect data from anyone under 18.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>Changes to this policy</summary>
+        <div class="qa-body">
+          <p>If we make material changes, we will notify you by email or through the platform before
+            they take effect. The "last updated" date at the top of this page will always reflect
+            the current version.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary>How to reach us</summary>
+        <div class="qa-body">
+          <p>Vybable Ltd., a subsidiary of Maloka Labs Ltd.<br>[Registered address]<br>
+            [Email address]<br>[Data Protection Officer contact]</p>
+          <p>If you are not satisfied with our response to a complaint, you have the right to lodge a
+            complaint with the ICO at ico.org.uk or by calling 0303 123 1113.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================ THE CLEARING ============================ -->
+  <!-- the end of the road: the camper's final destination, above the footer -->
+  <section class="chapter campsec wrap" data-road>
+    <div class="camp fade">
+      <svg id="campSvg" viewBox="0 0 760 280" aria-hidden="true">
+        <defs>
+          <radialGradient id="ember">
+            <stop offset="0" stop-color="#f0a91d" stop-opacity=".55"/>
+            <stop offset=".55" stop-color="#e04531" stop-opacity=".22"/>
+            <stop offset="1" stop-color="#e04531" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <!-- the clearing: struck in the same ink as the landscape's dark
+             near band, so the campsite beds into the country -->
+        <ellipse cx="380" cy="256" rx="330" ry="26" fill="#0b081e"/>
+
+        <!-- the far side of the site: dark pines, and more crews already
+             pitched in their own colours -->
+        <g fill="#0c4436">
+          <path d="M622,236 L630,212 L638,236 Z"/><rect x="628" y="236" width="4" height="6"/>
+          <path d="M696,216 L704,190 L712,216 Z"/><rect x="702" y="216" width="4" height="8"/>
+          <path d="M741,232 L748,210 L755,232 Z"/><rect x="746" y="232" width="4" height="7"/>
+        </g>
+        <g stroke="#14102b" stroke-width="2.5" stroke-linejoin="round">
+          <path d="M640,238 L654,214 L668,238 Z" fill="#e04531"/>
+          <path d="M676,240 L688,220 L700,240 Z" fill="#f0a91d"/>
+          <path d="M708,238 L722,212 L736,238 Z" fill="#bd2168"/>
+          <path d="M734,242 L744,226 L754,242 Z" fill="#4a2a7a"/>
+        </g>
+
+        <!-- a few more pines close in, so the site sits in real woods -->
+        <g fill="#0c4436">
+          <path d="M22,240 L32,210 L42,240 Z"/><rect x="30" y="240" width="4" height="7"/>
+          <path d="M228,236 L238,208 L248,236 Z"/><rect x="236" y="236" width="4" height="7"/>
+          <path d="M506,238 L515,214 L524,238 Z"/><rect x="513" y="238" width="4" height="6"/>
+        </g>
+
+        <!-- the geodome: Drop City patchwork, struck in the tour's inks -->
+        <g id="domeHot" stroke="#14102b" stroke-width="2.5" stroke-linejoin="round">
+          <path d="M52,250 L60,215 L91,250 Z"   fill="#10907e"/>
+          <path d="M60,215 L91,250 L107,215 Z"  fill="#f0a91d"/>
+          <path d="M91,250 L107,215 L130,250 Z" fill="#e04531"/>
+          <path d="M107,215 L130,250 L153,215 Z" fill="#ecd6ae"/>
+          <path d="M130,250 L153,215 L169,250 Z" fill="#bd2168"/>
+          <path d="M153,215 L169,250 L200,215 Z" fill="#10907e"/>
+          <path d="M169,250 L200,215 L208,250 Z" fill="#f0a91d"/>
+          <path d="M60,215 L87,185 L107,215 Z"  fill="#e04531"/>
+          <path d="M87,185 L107,215 L130,185 Z" fill="#4a2a7a"/>
+          <path d="M107,215 L130,185 L153,215 Z" fill="#f0a91d"/>
+          <path d="M130,185 L153,215 L173,185 Z" fill="#bd2168"/>
+          <path d="M153,215 L173,185 L200,215 Z" fill="#ecd6ae"/>
+          <path d="M87,185 L130,166 L130,185 Z" fill="#10907e"/>
+          <path d="M130,185 L130,166 L173,185 Z" fill="#e04531"/>
+        </g>
+
+        <!-- the Telegram tent: swept sides, rounded peak, the groundsheet
+             fold up the middle — raised to stand as tall as the geodome -->
+        <g id="tgHot" transform="translate(548,208)">
+          <path d="M46,-44 C50,-40 66,-8 90,32 Q93,40 88,40 L6,40 Q1,40 4,32 C27,-8 42,-40 46,-44 Z"
+                fill="#2AABEE" stroke="#14102b" stroke-width="4" stroke-linejoin="round"/>
+          <path d="M46,-24 C48,-20 49.5,0 49.5,40 L42.5,40 C42.5,0 44,-20 46,-24 Z" fill="#0b081e"/>
+        </g>
+
+        <!-- with no scripting the traveller never moves, so park a camper here -->
+        <g class="camp-van" transform="translate(285,182) scale(2.6)">
+          <ellipse cx="0" cy="22" rx="36" ry="7" fill="#0a0a1e" opacity=".45"/>
+          <rect x="-26" y="-26.5" width="46" height="3" rx="1.5" fill="#14102b"/>
+          <rect x="-24" y="-34" width="21" height="9" rx="4.5" fill="#bd2168" stroke="#14102b" stroke-width="2.4"/>
+          <rect x="1" y="-32" width="17" height="7" rx="3.5" fill="#10907e" stroke="#14102b" stroke-width="2.4"/>
+          <path d="M-36,-8 C-36,-18 -30,-24 -20,-24 L22,-24 C32,-24 38,-16 38,-6 L38,8
+                   C38,13 35,15 30,15 L-31,15 C-35,15 -36,12 -36,8 Z"
+                fill="#f6e7c8" stroke="#14102b" stroke-width="2.8"/>
+          <path d="M-36,2 L38,2 L38,8 C38,13 35,15 30,15 L-31,15 C-35,15 -36,12 -36,8 Z"
+                fill="#e04531" stroke="#14102b" stroke-width="2.8"/>
+          <path d="M-35,2 C-26,-1 -16,5 -6,2 C4,-1 14,5 24,2 C29,0.5 34,1 37,2"
+                fill="none" stroke="#10907e" stroke-width="3" stroke-linecap="round"/>
+          <rect x="-30" y="-19.5" width="16" height="12.5" rx="3" fill="#7fb6d9" stroke="#14102b" stroke-width="2.4"/>
+          <rect x="-10" y="-19.5" width="16" height="12.5" rx="3" fill="#7fb6d9" stroke="#14102b" stroke-width="2.4"/>
+          <rect x="10" y="-19.5" width="13" height="12.5" rx="3" fill="#7fb6d9" stroke="#14102b" stroke-width="2.4"/>
+          <path d="M27,-19 C33,-17 36,-12 37,-7" fill="none" stroke="#14102b" stroke-width="2.2"/>
+          <circle cx="30" cy="-2" r="4.4" fill="#f6e7c8" stroke="#14102b" stroke-width="2"/>
+          <path d="M27.8,-4 L30,0.4 L32.2,-4" fill="none" stroke="#14102b" stroke-width="1.7"/>
+          <circle cx="34.5" cy="7" r="3" fill="#f0a91d" stroke="#14102b" stroke-width="2"/>
+          <g transform="translate(-17,8)">
+            <g fill="#f6e7c8">
+              <circle cx="0" cy="-2.7" r="1.9"/><circle cx="2.6" cy="-0.8" r="1.9"/>
+              <circle cx="1.6" cy="2.2" r="1.9"/><circle cx="-1.6" cy="2.2" r="1.9"/>
+              <circle cx="-2.6" cy="-0.8" r="1.9"/>
+            </g>
+            <circle r="1.7" fill="#f0a91d"/>
+          </g>
+          <circle cx="-20" cy="15" r="8.5" fill="#14102b"/>
+          <circle cx="-20" cy="15" r="3.8" fill="#ecd6ae"/>
+          <circle cx="22" cy="15" r="8.5" fill="#14102b"/>
+          <circle cx="22" cy="15" r="3.8" fill="#ecd6ae"/>
+        </g>
+
+        <!-- the fire -->
+        <g transform="translate(470,236)">
+          <ellipse class="emberglow" cx="0" cy="6" rx="104" ry="34" fill="url(#ember)"/>
+          <path d="M-30,10 L30,-2 M-28,-1 L28,11" stroke="#5a3a22" stroke-width="9" stroke-linecap="round"/>
+          <path class="flame flame-a" d="M0,6 C-17,-10 -10,-27 0,-44 C11,-27 17,-10 0,6 Z" fill="#e04531"/>
+          <path class="flame flame-b" d="M0,6 C-11,-6 -7,-20 0,-32 C8,-20 11,-6 0,6 Z" fill="#f0a91d"/>
+          <path class="flame flame-c" d="M0,6 C-5,-2 -3,-11 0,-18 C4,-11 5,-2 0,6 Z" fill="#f6e7c8"/>
+        </g>
+      </svg>
+      <div id="busHot" aria-hidden="true"></div>
+      <div class="campnote" id="noteDome">VYBE YOUR OWN TWIN HERE!</div>
+      <div class="campnote" id="noteTg">CHAT WITH DEMO TWIN HERE!</div>
+      <div class="campnote" id="noteBus">LEARN MORE ABOUT GAIA HERE!</div>
+    </div>
+  </section>
+</main>
+
+</div><!-- /.page -->
+
+<script>
+(function(){
+"use strict";
+
+/* ----------------------------------------------------------------
+   Reveals are wired FIRST. Nothing below this point may prevent the
+   copy from appearing. Tickets are dealt with a JS stagger so their
+   hover physics never inherit a transition-delay.
+   ---------------------------------------------------------------- */
+const blocks = document.querySelectorAll('.reveal, .fade');
+const showAll = () => blocks.forEach(el => el.classList.add('lit'));
+
+if('IntersectionObserver' in window){
+  const io = new IntersectionObserver((es) => {
+    for(const e of es){
+      if(!e.isIntersecting) continue;
+      const el = e.target;
+      io.unobserve(el);
+      if(el.classList.contains('ticket')){
+        const idx = [...el.parentElement.children].indexOf(el);
+        setTimeout(() => el.classList.add('lit'), idx * 70);
+      } else {
+        el.classList.add('lit');
+      }
+    }
+  }, { threshold:0.2, rootMargin:'0px 0px -6% 0px' });
+  blocks.forEach(el => io.observe(el));
+  // if the observer silently never fires, show everything rather than nothing
+  setTimeout(() => { if(!document.querySelector('.reveal.lit, .fade.lit')) showAll(); }, 2500);
+} else {
+  showAll();
+}
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COARSE  = matchMedia('(pointer: coarse)').matches;
+const fx   = document.getElementById('fx');
+const fc   = fx.getContext('2d');
+const fg   = document.getElementById('fg');
+const fgc  = fg.getContext('2d');
+const spineSvg  = document.getElementById('spineSvg');
+const roadBase  = document.getElementById('roadBase');
+const roadLit   = document.getElementById('roadLit');
+const travelClip= document.getElementById('travelClip');
+const badgeG    = document.getElementById('badgeG');
+const traveller = document.getElementById('traveller');
+const tvBody    = document.getElementById('tvBody');
+const tvBeam    = document.getElementById('tvBeam');
+const helm      = document.getElementById('helm');
+const sunEl  = document.querySelector('.body-sun');
+const moonEl = document.querySelector('.body-moon');
+const skyEl = document.querySelector('.sky');
+/* The grade is written to .sky, not :root. On :root a custom property
+   invalidates style for the whole document every frame; scoped here it
+   touches one element — and only when the colour has actually moved. */
+const skyStyle = skyEl.style;
+let lastGrade = '';
+const SVGNS = 'http://www.w3.org/2000/svg';
+const screenEl  = document.querySelector('.screen');
+const campSvg   = document.getElementById('campSvg');
+const tickerWrap= document.getElementById('tickerWrap');
+const tickerEl  = document.getElementById('ticker');
+const boardEl   = document.getElementById('board');
+const wsStars   = document.getElementById('wsStars');
+const wsHills   = document.getElementById('wsHills');
+const wsMtns    = document.getElementById('wsMtns');
+const wsTrees   = document.getElementById('wsTrees');
+const wsPolesEl = document.getElementById('wsPoles');
+const wsShootEl = document.getElementById('wsShoot');
+const wsDaisies = [...document.querySelectorAll('#wsRoad .wsd')];
+const mvDaisies = [...document.querySelectorAll('#mvDaisies .mvd')];
+const noteBusEl = document.getElementById('noteBus');
+const whA = document.getElementById('whA');
+const whB = document.getElementById('whB');
+const dSpd   = document.getElementById('dSpd');
+const spdBar = document.getElementById('spdBar');
+
+/* ---------------------------------------------------------------
+   Colour helpers — the sky is interpolated, never hard-coded
+   --------------------------------------------------------------- */
+const hex = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+const rgb = c => 'rgb(' + (c[0]|0) + ',' + (c[1]|0) + ',' + (c[2]|0) + ')';
+const mix = (a,b,t) => [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const smooth = (e0,e1,x) => { const t = clamp((x-e0)/(e1-e0),0,1); return t*t*(3-2*t); };
+const wrap = (v, m) => ((v % m) + m) % m;
+
+/* deterministic rng, so the country outside is the same on every visit */
+function mulberry(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* Four points on the drive: late afternoon, sunset, dusk, midnight. */
+const GRADE = [
+  { at:0.00, top:'#1b3560', mid:'#7a4a5e', low:'#d9772e' },
+  { at:0.34, top:'#2a2050', mid:'#8e3a5e', low:'#e04531' },
+  { at:0.62, top:'#171238', mid:'#4a2560', low:'#91305e' },
+  { at:1.00, top:'#0a0a1e', mid:'#14102b', low:'#221a44' }
+].map(g => ({ at:g.at, top:hex(g.top), mid:hex(g.mid), low:hex(g.low) }));
+
+function gradeAt(p){
+  let i = 0;
+  while(i < GRADE.length-2 && p > GRADE[i+1].at) i++;
+  const a = GRADE[i], b = GRADE[i+1];
+  const t = clamp((p - a.at) / (b.at - a.at), 0, 1);
+  return { top:mix(a.top,b.top,t), mid:mix(a.mid,b.mid,t), low:mix(a.low,b.low,t) };
+}
+
+/* ---------------------------------------------------------------
+   THE SPINE
+   One path, generated from the measured position of every
+   road-bearing section, so it can never show a seam. Regenerated on
+   resize only — nothing here runs per scroll.
+   --------------------------------------------------------------- */
+let PATH_LEN = 0, PAGE_W = 0, PAGE_H = 0;
+let ARCH_MARK = 240, AY_SAFE = 320;   // where the camper rests, and where the arch ends
+
+const PERIOD_WIDE = 1100, PERIOD_NARROW = 700;
+
+/* The same S-curve the CSS lays down, expressed as a path so the camper can
+   ride it. One tile spans a full period and repeats to the foot of the page,
+   which is why the two can never drift apart. */
+function buildSpine(assign = true){
+  const page = document.querySelector('.page');
+  PAGE_W = page.clientWidth;
+  PAGE_H = page.offsetHeight;
+  spineSvg.setAttribute('viewBox', '0 0 ' + PAGE_W + ' ' + PAGE_H);
+
+  const secs = [...document.querySelectorAll('[data-road]')];
+  const narrow = PAGE_W <= 720;
+  const P  = narrow ? PERIOD_NARROW : PERIOD_WIDE;
+  const cx = PAGE_W * (narrow ? 0.11 : 0.50);
+  const A  = PAGE_W * (narrow ? 0.07 : 0.34);
+  const R = cx + A, L = cx - A;
+
+  // stop the road at the campfire rather than running it into the footer
+  const camp = document.querySelector('.camp svg');
+  let endY = PAGE_H, campX = cx, approach = 190;
+  if(camp){
+    const cr = camp.getBoundingClientRect();
+    // she parks with her wheels kissing the top of the clearing
+    endY  = cr.top + scrollY - (page.getBoundingClientRect().top + scrollY) + cr.height * 0.70;
+    campX = cr.left + cr.width * 0.45;
+    approach = Math.min(190, cr.width * 0.42);
+  }
+
+  const seg = (x1,y1,x2,y2,x3,y3) =>
+    ' C' + x1 + ' ' + y1 + ',' + x2 + ' ' + y2 + ',' + x3 + ' ' + y3;
+
+  /* On wide screens the road opens on an arch held ABOVE the headline —
+     measured from the h1 itself, so the camper never passes behind the
+     copy — then swings down the headline's right-hand side into the
+     first bend. */
+  let d, y = 0;
+  if(!narrow){
+    const h1 = document.querySelector('.hero h1');
+    let ax = PAGE_W * 0.18, ay = 220, aw = Math.min(680, PAGE_W * 0.46);
+    if(h1){
+      const hr = h1.getBoundingClientRect();
+      const hTop = hr.top + scrollY - (page.getBoundingClientRect().top + scrollY);
+      ay = Math.max(150, hTop - 26);
+      ax = hr.left + 6;
+      aw = Math.min(680, Math.max(420, hr.width * 0.92));
+    }
+    const crest = Math.max(36, ay - 130);
+    const jy = Math.max(0.25 * P, ay + 170);
+    ARCH_MARK = Math.max(240, aw * 0.58);
+    AY_SAFE = ay + 40;
+    d = 'M' + ax + ' ' + ay +
+        seg(ax + aw * 0.24, crest, ax + aw * 0.76, crest, ax + aw, ay) +
+        seg(ax + aw + 150, ay + 90, R, jy - 70, R, jy) +
+        seg(R, jy + (P - jy) * 0.55, cx, P - (P - jy) * 0.55, cx, P);
+    y = P;
+  } else {
+    d = 'M' + cx + ' 0';
+    ARCH_MARK = 240;
+    AY_SAFE = 320;
+  }
+
+  // whole periods, until the last one would overshoot the clearing
+  while(y + P <= endY){
+    d += seg(cx, y+0.11*P, R,  y+0.14*P, R,  y+0.25*P);
+    d += seg(R,  y+0.36*P, cx, y+0.39*P, cx, y+0.50*P);
+    d += seg(cx, y+0.61*P, L,  y+0.64*P, L,  y+0.75*P);
+    d += seg(L,  y+0.86*P, cx, y+0.89*P, cx, y+1.00*P);
+    y += P;
+  }
+  // and a final leg that levels out into the clearing
+  if(endY > y + 40){
+    const mid = (y + endY) / 2;
+    d += seg(cx, y + (mid-y)*0.6, R, mid - (mid-y)*0.6, R, mid);
+    d += seg(R, mid + (endY-mid)*0.6, campX - approach, endY, campX, endY);
+  }
+
+  roadBase.setAttribute('d', d);
+  roadLit.setAttribute('d', d);
+  PATH_LEN = roadBase.getTotalLength();
+  travelClip.setAttribute('width', PAGE_W);
+
+  // Nestle each chapter into the bend it actually sits in: sample the road
+  // beside the section and push the copy to the opposite side. Done once,
+  // then the road is rebuilt on the settled heights.
+  if(assign && !narrow){
+    const top0 = page.getBoundingClientRect().top + scrollY;
+    let moved = false;
+    for(const sec of secs){
+      const r = sec.getBoundingClientRect();
+      const mid = r.top + scrollY - top0 + r.height / 2;
+      const roadX = pointAtY(mid).x;
+      const want = roadX >= PAGE_W / 2 ? 'pocket-l' : 'pocket-r';
+      if(!sec.classList.contains(want)){
+        sec.classList.remove('pocket-l','pocket-r');
+        sec.classList.add(want);
+        moved = true;
+      }
+    }
+    if(moved){ buildSpine(false); return; }
+  }
+
+  placeBadges(page.getBoundingClientRect().top + scrollY);
+}
+
+/* the path descends monotonically, so a bisect on y finds any point */
+function pointAtY(y){
+  let lo = 0, hi = PATH_LEN;
+  for(let i = 0; i < 22; i++){
+    const mid = (lo + hi) / 2;
+    if(roadBase.getPointAtLength(mid).y < y) lo = mid; else hi = mid;
+  }
+  return roadBase.getPointAtLength((lo + hi) / 2);
+}
+
+/* Badges are struck on the road beside the thing they mark, so each one
+   is anchored to real content rather than a guessed fraction. */
+function placeBadges(pageTop){
+  while(badgeG.firstChild) badgeG.removeChild(badgeG.firstChild);
+  badgeLens = [];
+  const marks = [...document.querySelectorAll('[data-stop]')];
+
+  for(const el of marks){
+    const r = el.getBoundingClientRect();
+    const y = r.top + scrollY - pageTop + r.height / 2;
+    const p = pointAtY(y);
+    const kind = el.dataset.stop;
+    const label = el.dataset.label || '';
+    const narrow = PAGE_W <= 720;
+    const toRight = p.x >= PAGE_W / 2;     // the label reads outboard, away from the copy
+    const R = kind === 'plain' ? 9 : 14;
+
+    const g = document.createElementNS(SVGNS, 'g');
+    g.setAttribute('class',
+      kind === 'lit' ? 'stop-lit' : kind === 'dawn' ? 'stop-dawn' :
+      kind === 'veiled' ? 'stop-veiled' : '');
+    g.setAttribute('transform', 'translate(' + p.x + ',' + y + ')');
+
+    const pulse = document.createElementNS(SVGNS, 'circle');
+    pulse.setAttribute('class','badge-pulse'); pulse.setAttribute('r', R);
+    g.appendChild(pulse);
+
+    // the crest is a bright daisy: six petals round a marigold heart
+    const daisy = document.createElementNS(SVGNS, 'g');
+    daisy.setAttribute('class', 'badge-daisy');
+    for(let pi = 0; pi < 6; pi++){
+      const th = pi / 6 * 6.2832;
+      const pet = document.createElementNS(SVGNS, 'circle');
+      pet.setAttribute('class', 'badge-petal');
+      pet.setAttribute('cx', (Math.cos(th) * R * 0.62).toFixed(2));
+      pet.setAttribute('cy', (Math.sin(th) * R * 0.62).toFixed(2));
+      pet.setAttribute('r', (R * 0.48).toFixed(2));
+      daisy.appendChild(pet);
+    }
+    const core = document.createElementNS(SVGNS, 'circle');
+    core.setAttribute('class', 'badge-core');
+    core.setAttribute('r', (R * 0.46).toFixed(2));
+    daisy.appendChild(core);
+    g.appendChild(daisy);
+
+    if(label && !narrow){
+      const tie = document.createElementNS(SVGNS, 'path');
+      const dir = toRight ? 1 : -1;
+      // When the road crosses the copy column, a level label would run
+      // straight through the slug beside it — so it ducks under its tie.
+      const inward = (dir < 0 && p.x > PAGE_W * 0.28) || (dir > 0 && p.x < PAGE_W * 0.72);
+      tie.setAttribute('class','badge-tie');
+      tie.setAttribute('d', inward
+        ? 'M' + (dir * (R + 5)) + ',6 L' + (dir * (R + 34)) + ',20'
+        : 'M' + (dir * (R + 5)) + ',0 H' + (dir * (R + 40)));
+      g.appendChild(tie);
+
+      const t = document.createElementNS(SVGNS, 'text');
+      t.setAttribute('class','badge-label');
+      t.setAttribute('x', dir * (R + (inward ? 41 : 47)));
+      t.setAttribute('y', inward ? 26 : 4);
+      t.setAttribute('text-anchor', toRight ? 'start' : 'end');
+      t.textContent = label;
+      g.appendChild(t);
+    }
+    if(kind === 'plain') g.classList.add('stop-plain');
+    // remember how far along the road this stop sits, so it can ignite as she passes
+    badgeLens.push({ g, at: lengthAtY(y), x: p.x, y: y, lit:false });
+    badgeG.appendChild(g);
+  }
+  // a rebuilt list must not sound a horn for every stop already behind
+  // her — the first pass marks them silently
+  freshBadges = true;
+}
+
+/* the bisect above returns a point; this returns the distance to it */
+function lengthAtY(y){
+  let lo = 0, hi = PATH_LEN;
+  for(let i = 0; i < 22; i++){
+    const mid = (lo + hi) / 2;
+    if(roadBase.getPointAtLength(mid).y < y) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+/* ---------------------------------------------------------------
+   Scroll model: a critically-damped spring chasing the scrollbar.
+   Everything that moves reads from S — nothing reads the scrollbar
+   directly.
+   --------------------------------------------------------------- */
+const S = { y:0, glide:0, sv:0, rate:0, dist:0, prog:0, swing:0 };
+/* pointer, smoothed — the world leans toward wherever you are looking */
+const P = { x:0, y:0, tx:0, ty:0 };
+let dashPhase = 0, intro = 0, badgeLens = [];
+let maxScroll = 1;
+
+/* page-space rectangles, cached at measure time so the frame loop
+   never has to ask the DOM where anything is */
+let zones = {};
+let tickW = 0;
+function cacheZones(){
+  const mk = el => {
+    if(!el) return null;
+    const r = el.getBoundingClientRect();
+    return { top:r.top + scrollY, bot:r.bottom + scrollY, left:r.left, w:r.width, h:r.height };
+  };
+  zones.screen = mk(screenEl);
+  zones.ticker = mk(tickerWrap);
+  const c = mk(campSvg);
+  if(c){ c.fx = c.left + c.w * (470/760); c.fy = c.top + c.h * (236/280); }
+  zones.camp = c;
+  tickW = tickerEl && tickerEl.firstElementChild
+    ? tickerEl.firstElementChild.getBoundingClientRect().width : 0;
+}
+const onScreen = (z, m = 120) =>
+  !!z && z.bot > S.glide - m && z.top < S.glide + innerHeight + m;
+
+function measure(){
+  maxScroll = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+  nextFire = fireOdo + maxScroll * 0.05;   // the first pop comes early
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  fx.width = innerWidth * dpr; fx.height = innerHeight * dpr;
+  fc.setTransform(dpr,0,0,dpr,0,0);
+  fg.width = innerWidth * dpr; fg.height = innerHeight * dpr;
+  fgc.setTransform(dpr,0,0,dpr,0,0);
+  seedStars();
+  seedLand();
+  buildSpine();
+  cacheZones();
+}
+
+/* ---------------------------------------------------------------
+   THE DEEP FIELD
+   Four bands of stars at different depths, plus nebula and cloud.
+   Every layer answers three inputs at its own rate — how far you have
+   scrolled, how far the road has swung left or right, and where the
+   pointer is — which is what gives the sky its depth. Fast scrolling
+   draws the near bands out into streaks.
+   --------------------------------------------------------------- */
+const BANDS = [
+  { share:.46, depth:0.030, par: 8, rmin:0.35, rmax:0.95, a:0.55 },  // furthest
+  { share:.28, depth:0.085, par:20, rmin:0.55, rmax:1.35, a:0.72 },
+  { share:.18, depth:0.190, par:42, rmin:0.85, rmax:1.90, a:0.88 },
+  { share:.08, depth:0.400, par:78, rmin:1.30, rmax:2.70, a:1.00 }   // nearest
+];
+let stars = [], FW = 1, FH = 1;
+
+/* Cloud and nebula are pure blur, so they are rendered a quarter size and
+   scaled up — visually identical, a sixteenth of the fill cost. */
+const Q = 4;
+let bg = null, bgc = null, BW = 1, BH = 1;
+function sizeBg(){
+  BW = Math.max(1, Math.ceil(innerWidth / Q));
+  BH = Math.max(1, Math.ceil(innerHeight / Q));
+  if(!bg){ bg = document.createElement('canvas'); bgc = bg.getContext('2d'); }
+  bg.width = BW; bg.height = BH;
+}
+
+function seedStars(){
+  const W = innerWidth, H = innerHeight;
+  FW = W * 1.35; FH = H * 1.7;
+  sizeBg();
+  const total = Math.round(W * H / 6800);
+  stars = [];
+  for(let b = 0; b < BANDS.length; b++){
+    const band = BANDS[b];
+    const n = Math.round(total * band.share);
+    for(let k = 0; k < n; k++){
+      stars.push({
+        b, x: Math.random() * FW, y: Math.random() * FH,
+        r: band.rmin + Math.random() * (band.rmax - band.rmin),
+        ph: Math.random() * 6.2832,
+        sp: 0.4 + Math.random() * 0.9,
+        c: k % 11 === 0 ? '#f0a91d' : (k % 17 === 0 ? '#7fb6d9' : '#f6e7c8')
+      });
+    }
+  }
+}
+
+/* nebula — oil-wheel projections, thrown on the sky after dark */
+const BLOBS = [
+  { r:0.46, hue:'224,69,49',  ox:0.22, oy:0.28, a:0.00040, b:0.00062, k:1.00, d:0.05 },
+  { r:0.36, hue:'189,33,104', ox:0.74, oy:0.24, a:0.00055, b:0.00037, k:0.86, d:0.09 },
+  { r:0.40, hue:'16,144,126', ox:0.52, oy:0.64, a:0.00031, b:0.00071, k:1.14, d:0.07 },
+  { r:0.32, hue:'240,169,29', ox:0.28, oy:0.70, a:0.00068, b:0.00045, k:0.72, d:0.12 },
+  { r:0.28, hue:'123,90,200', ox:0.84, oy:0.56, a:0.00047, b:0.00058, k:1.32, d:0.15 }
+];
+
+/* three cloud banks, each crossing at its own rate */
+const CLOUDS = [
+  { y:0.16, w:0.80, h:0.13, sp:0.0000090, d:0.030, a:0.16 },
+  { y:0.40, w:1.05, h:0.10, sp:0.0000150, d:0.070, a:0.13 },
+  { y:0.66, w:0.70, h:0.16, sp:0.0000230, d:0.130, a:0.10 }
+];
+
+/* the occasional shooting star */
+const SHOOTERS = [];
+let nextShooter = 2600;
+function updateShooters(dt, night){
+  nextShooter -= dt * 1000;
+  if(nextShooter <= 0 && night > 0.45 && SHOOTERS.length < 2){
+    SHOOTERS.push({
+      x: innerWidth * (0.15 + Math.random() * 0.7), y: innerHeight * Math.random() * 0.4,
+      vx: -(220 + Math.random() * 200), vy: 150 + Math.random() * 130, life: 1
+    });
+    nextShooter = 5200 + Math.random() * 9000;
+  }
+  for(let i = SHOOTERS.length - 1; i >= 0; i--){
+    const sh = SHOOTERS[i];
+    sh.x += sh.vx * dt; sh.y += sh.vy * dt; sh.life -= dt * 0.85;
+    if(sh.life <= 0) SHOOTERS.splice(i, 1);
+  }
+}
+
+/* ---------------------------------------------------------------
+   THE ROADSIDE WORLD
+   Five bands of country streaming past at depth-scaled speeds, all
+   driven by the same accumulated scroll distance the van drives on.
+   The near bands fly, the far ridge barely stirs — that difference
+   is the whole illusion. And the country CHANGES as the light goes:
+   town rooftops give way to barns and hay, then pine forest at dusk,
+   then festival tents strung with lights near the end of the road.
+   --------------------------------------------------------------- */
+const LAND = [
+  { sp:.055, per:2600, day:hex('#4a3566'), night:hex('#191340'), kind:'ridge',
+    base:.84,  amp:[.09,.24],  step:130 },
+  { sp:.115, per:2100, day:hex('#392a55'), night:hex('#130f30'), kind:'hills',
+    base:.905, amp:[.035,.10], step:210 },
+  { sp:.24,  per:1700, day:hex('#2a1f48'), night:hex('#0f0c26'), kind:'scene', base:.905 },
+  { sp:.46,  per:1250, day:hex('#1e1538'), night:hex('#0b081e'), kind:'hedge', base:.958 },
+  { sp:.85,  per:1040, day:hex('#161029'), night:hex('#070517'), kind:'poles' }
+];
+let FLIES = [];
+
+function seedLand(){
+  const rnd = mulberry(1967);
+  for(const L of LAND){
+    if(L.kind === 'ridge' || L.kind === 'hills'){
+      const n = Math.round(L.per / L.step);
+      L.pts = [];
+      for(let i = 0; i < n; i++) L.pts.push(L.amp[0] + rnd() * (L.amp[1] - L.amp[0]));
+      if(L.kind === 'ridge'){          // a couple of proper peaks on the skyline
+        L.pts[3] = L.amp[1] * 1.25;
+        L.pts[Math.floor(n * 0.6)] = L.amp[1] * 1.1;
+      }
+      L.pts.push(L.pts[0]);            // seamless tile
+    }
+    if(L.kind === 'scene'){
+      const n = 7; L.slots = [];
+      for(let i = 0; i < n; i++){
+        L.slots.push({
+          x: i * (L.per / n) + rnd() * 120,
+          role: rnd() < 0.34 ? 'structure' : (rnd() < 0.2 ? 'none' : 'tree'),
+          s: 0.75 + rnd() * 0.6, v: rnd()
+        });
+      }
+    }
+    if(L.kind === 'hedge'){
+      const n = 30; L.bumps = [];
+      for(let i = 0; i < n; i++) L.bumps.push(2 + rnd() * 7);
+      L.bumps.push(L.bumps[0]);
+    }
+    if(L.kind === 'poles'){ L.xs = [140, 660]; }
+  }
+  /* fireflies live in the hedge layer's world, so they stream past with it */
+  FLIES = [];
+  for(let i = 0; i < 26; i++) FLIES.push({
+    wx: rnd() * 3750, yf: .88 + rnd() * .09,
+    ph: rnd() * 6.28, ph2: rnd() * 6.28, sp: .6 + rnd() * .9 });
+}
+
+function drawProp(sl, sx, y0, col, t, aHouse, aBarn, aPine, aTent){
+  fc.fillStyle = col;
+  const s = sl.s;
+  if(sl.role === 'tree'){
+    const aRound = 1 - aPine;
+    if(aRound > .02){
+      fc.globalAlpha = aRound;
+      fc.fillRect(sx - 2.5*s, y0 - 16*s, 5*s, 16*s);
+      fc.beginPath(); fc.arc(sx, y0 - 26*s, 15*s, 0, 6.2832); fc.fill();
+    }
+    if(aPine > .02){
+      fc.globalAlpha = aPine;
+      fc.fillRect(sx - 2*s, y0 - 8*s, 4*s, 8*s);
+      fc.beginPath();
+      fc.moveTo(sx, y0 - 52*s); fc.lineTo(sx - 13*s, y0 - 22*s); fc.lineTo(sx + 13*s, y0 - 22*s);
+      fc.closePath(); fc.fill();
+      fc.beginPath();
+      fc.moveTo(sx, y0 - 34*s); fc.lineTo(sx - 16*s, y0 - 6*s); fc.lineTo(sx + 16*s, y0 - 6*s);
+      fc.closePath(); fc.fill();
+    }
+  } else {
+    if(aHouse > .02){
+      fc.globalAlpha = aHouse;
+      fc.fillRect(sx - 22*s, y0 - 24*s, 44*s, 24*s);
+      fc.beginPath();
+      fc.moveTo(sx - 26*s, y0 - 24*s); fc.lineTo(sx, y0 - 40*s); fc.lineTo(sx + 26*s, y0 - 24*s);
+      fc.closePath(); fc.fill();
+      fc.fillRect(sx + 8*s, y0 - 37*s, 6*s, 12*s);
+    }
+    if(aBarn > .02){
+      fc.globalAlpha = aBarn;
+      const bx = sx + 60*s;
+      fc.fillRect(bx - 30*s, y0 - 26*s, 60*s, 26*s);
+      fc.beginPath();
+      fc.moveTo(bx - 34*s, y0 - 26*s); fc.lineTo(bx, y0 - 44*s); fc.lineTo(bx + 34*s, y0 - 26*s);
+      fc.closePath(); fc.fill();
+      fc.beginPath(); fc.arc(sx - 52*s, y0 - 8*s, 9*s, Math.PI, 0); fc.closePath(); fc.fill();
+    }
+    if(aTent > .02){
+      fc.globalAlpha = aTent;
+      const tx = sx - 44*s;
+      fc.beginPath();
+      fc.moveTo(tx - 26*s, y0); fc.lineTo(tx, y0 - 34*s); fc.lineTo(tx + 26*s, y0);
+      fc.closePath(); fc.fill();
+      // a warm doorway, and a string of festival lights
+      fc.fillStyle = 'rgba(240,169,29,' + (aTent * .85).toFixed(3) + ')';
+      fc.beginPath();
+      fc.moveTo(tx - 7*s, y0); fc.lineTo(tx, y0 - 15*s); fc.lineTo(tx + 7*s, y0);
+      fc.closePath(); fc.fill();
+      if(sl.v > .45){
+        for(let i = 0; i < 6; i++){
+          const lx = sx - 20*s + i * 16*s;
+          const ly = y0 - 40*s + Math.sin(i / 5 * Math.PI) * 10*s;
+          const tw = .5 + .5 * Math.sin(t * .004 + i * 1.7 + sl.v * 9);
+          fc.fillStyle = 'rgba(240,169,29,' + (aTent * tw).toFixed(3) + ')';
+          fc.beginPath(); fc.arc(lx, ly, 2.1, 0, 6.2832); fc.fill();
+        }
+      }
+      fc.fillStyle = col;
+    }
+  }
+  fc.globalAlpha = 1;
+}
+
+function drawFlies(t, prog, travel, H, W){
+  const win = smooth(.30,.44,prog) * (1 - smooth(.80,.92,prog));
+  if(win < .02) return;
+  for(const f of FLIES){
+    const sx = wrap(f.wx - travel, 3750);
+    if(sx > W + 20) continue;
+    const x = sx + Math.sin(t * .0006 * f.sp + f.ph) * 14;
+    const y = H * f.yf + Math.sin(t * .0009 * f.sp + f.ph2) * 9;
+    const a = win * (0.3 + 0.7 * Math.max(0, Math.sin(t * .0023 * f.sp + f.ph)));
+    fc.fillStyle = 'rgba(240,169,29,' + (a * .28).toFixed(3) + ')';
+    fc.beginPath(); fc.arc(x, y, 4.5, 0, 6.2832); fc.fill();
+    fc.fillStyle = 'rgba(255,214,120,' + a.toFixed(3) + ')';
+    fc.beginPath(); fc.arc(x, y, 1.5, 0, 6.2832); fc.fill();
+  }
+}
+
+function drawLand(t, prog, night){
+  const W = innerWidth, H = innerHeight;
+  const drift = S.swing, px = P.x;
+
+  /* the horizon catches fire as the sun reaches it */
+  const flare = smooth(.20,.33,prog) * (1 - smooth(.40,.52,prog));
+  if(flare > .01){
+    const fy = H * .80;
+    const g = fc.createLinearGradient(0, fy - H*.16, 0, fy + H*.10);
+    g.addColorStop(0,  'rgba(224,69,49,0)');
+    g.addColorStop(.55,'rgba(224,69,49,'  + (0.34*flare).toFixed(3) + ')');
+    g.addColorStop(.8, 'rgba(240,169,29,' + (0.30*flare).toFixed(3) + ')');
+    g.addColorStop(1,  'rgba(240,169,29,0)');
+    fc.fillStyle = g; fc.fillRect(0, fy - H*.16, W, H*.26);
+  }
+
+  /* biome dials — what the country outside is doing right now */
+  const aHouse = 1 - smooth(.10,.26,prog);
+  const aBarn  = smooth(.05,.14,prog) * (1 - smooth(.40,.55,prog));
+  const aPine  = smooth(.34,.52,prog);
+  const aTent  = smooth(.68,.82,prog);
+
+  for(const L of LAND){
+    const travel = S.dist * L.sp + drift * L.sp * 170 + px * L.sp * 110;
+    const col = rgb(mix(L.day, L.night, night));
+    const per = L.per, off = wrap(travel, per);
+    fc.fillStyle = col;
+
+    if(L.kind === 'ridge' || L.kind === 'hills'){
+      const base = H * L.base;
+      fc.beginPath();
+      let x0 = 0, first = true;
+      for(let k = -1; k * per - off < W + per; k++){
+        const bx = k * per - off;
+        for(let i = 0; i < L.pts.length; i++){
+          const x = bx + i * L.step, y = base - L.pts[i] * H;
+          if(first){ fc.moveTo(x, y); x0 = x; first = false; } else fc.lineTo(x, y);
+        }
+      }
+      fc.lineTo(W + per, H + 4); fc.lineTo(x0, H + 4); fc.closePath(); fc.fill();
+    }
+
+    else if(L.kind === 'scene'){
+      const y0 = H * L.base;
+      const aCamp = smooth(.70, .86, prog);   // the woods thicken near the site
+      for(let k = -1; k * per - off < W + per; k++){
+        const bx = k * per - off;
+        for(const sl of L.slots){
+          const sx = bx + sl.x;
+          if(sx < -120 || sx > W + 120 || sl.role === 'none') continue;
+          drawProp(sl, sx, y0, col, t, aHouse, aBarn, aPine, aTent);
+        }
+        if(aCamp > .02){
+          fc.globalAlpha = aCamp;
+          fc.fillStyle = col;
+          for(const sl of L.slots){
+            const sx = bx + sl.x + 122;
+            if(sx < -60 || sx > W + 60) continue;
+            const s = sl.s * 0.8;
+            fc.fillRect(sx - 2*s, y0 - 8*s, 4*s, 8*s);
+            fc.beginPath();
+            fc.moveTo(sx, y0 - 46*s); fc.lineTo(sx - 12*s, y0 - 18*s); fc.lineTo(sx + 12*s, y0 - 18*s);
+            fc.closePath(); fc.fill();
+            fc.beginPath();
+            fc.moveTo(sx, y0 - 30*s); fc.lineTo(sx - 15*s, y0 - 5*s); fc.lineTo(sx + 15*s, y0 - 5*s);
+            fc.closePath(); fc.fill();
+          }
+          fc.globalAlpha = 1;
+        }
+      }
+    }
+
+    else if(L.kind === 'hedge'){
+      const yb = H * L.base, n = L.bumps.length - 1, stepx = per / n;
+      fc.beginPath();
+      let xh = 0, firstH = true;
+      for(let k = -1; k * per - off < W + per; k++){
+        const bx = k * per - off;
+        for(let i = 0; i <= n; i++){
+          const x = bx + i * stepx, y = yb - L.bumps[i];
+          if(firstH){ fc.moveTo(x, y); xh = x; firstH = false; } else fc.lineTo(x, y);
+        }
+      }
+      fc.lineTo(W + per, H + 4); fc.lineTo(xh, H + 4); fc.closePath(); fc.fill();
+      // fence posts along the hedge
+      for(let k = -1; k * per - off < W + per; k++){
+        const bx = k * per - off;
+        for(let i = 0; i < n; i += 6){
+          const x = bx + i * stepx;
+          if(x < -20 || x > W + 20) continue;
+          fc.fillRect(x - 2, yb - 19, 4, 19);
+        }
+      }
+      drawFlies(t, prog, travel, H, W);
+    }
+
+    else if(L.kind === 'poles'){
+      /* telegraph poles, and the wires swooping between them — the
+         fastest layer. At the end of the road they also paint onto the
+         foreground plane, so the campsite sits behind the wires. */
+      const topY = H * .60, armY = H * .632, armY2 = H * .596;
+      const xs = [];
+      for(let k = -2; k * per - off < W + per * 2; k++){
+        const bx = k * per - off;
+        for(const pxx of L.xs){
+          const x = bx + pxx;
+          if(x > -per && x < W + per) xs.push(x);
+        }
+      }
+      const paintPoles = (g, base) => {
+        g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 1.4;
+        g.globalAlpha = base * 0.9;
+        for(let i = 0; i < xs.length - 1; i++){
+          const a = xs[i], b = xs[i+1], m = (a + b) / 2;
+          g.beginPath(); g.moveTo(a, armY);  g.quadraticCurveTo(m, armY  + 30, b, armY);  g.stroke();
+          g.beginPath(); g.moveTo(a, armY2); g.quadraticCurveTo(m, armY2 + 26, b, armY2); g.stroke();
+        }
+        g.globalAlpha = base;
+        for(const x of xs){
+          if(x < -30 || x > W + 30) continue;
+          g.fillRect(x - 3.5, topY, 7, H - topY + 4);
+          g.fillRect(x - 20, armY - 3, 40, 4.5);
+          g.fillRect(x - 14, armY2 - 3, 28, 4);
+        }
+        g.globalAlpha = 1;
+      };
+      paintPoles(fc, 1);
+      const fgA = smooth(0.90, 0.985, prog);
+      if(fgA > 0.01) paintPoles(fgc, fgA);
+    }
+  }
+}
+
+/* ---------------------------------------------------------------
+   Small lives: birds at golden hour, exhaust from the van,
+   embers off the campfire.
+   --------------------------------------------------------------- */
+const FLOCKS = [];
+let nextFlock = 3500;
+function updateBirds(dt, prog, t){
+  nextFlock -= dt * 1000;
+  if(nextFlock <= 0 && prog < .34 && FLOCKS.length < 1 && !REDUCED){
+    const n = 5 + Math.floor(Math.random() * 4), off = [];
+    for(let i = 0; i < n; i++){
+      const k = Math.ceil(i / 2), side = i % 2 ? 1 : -1;
+      off.push({ x: k * 16, y: side * k * 9 + k * 2 });
+    }
+    FLOCKS.push({ x: innerWidth + 60, y: innerHeight * (.14 + Math.random() * .16),
+                  vx: -(46 + Math.random() * 26), off, ph: Math.random() * 6.28 });
+    nextFlock = 9000 + Math.random() * 8000;
+  }
+  for(let i = FLOCKS.length - 1; i >= 0; i--){
+    const fl = FLOCKS[i];
+    fl.x += fl.vx * dt; fl.y += Math.sin(t * .0006 + fl.ph) * 3 * dt;
+    if(fl.x < -220) FLOCKS.splice(i, 1);
+  }
+  const fade = 1 - smooth(.30,.40,prog);   // they roost as the light goes
+  if(fade < .02){ FLOCKS.length = 0; return; }
+  fc.strokeStyle = 'rgba(20,14,40,' + (0.8 * fade).toFixed(2) + ')';
+  fc.lineWidth = 1.7; fc.lineCap = 'round';
+  for(const fl of FLOCKS){
+    for(let i = 0; i < fl.off.length; i++){
+      const o = fl.off[i];
+      const bx = fl.x + o.x, by = fl.y + o.y;
+      const flap = Math.sin(t * .012 + fl.ph + i * .7) * 3.4;
+      fc.beginPath();
+      fc.moveTo(bx - 6, by);
+      fc.quadraticCurveTo(bx - 2.5, by - 3 - flap, bx, by);
+      fc.quadraticCurveTo(bx + 2.5, by - 3 - flap, bx + 6, by);
+      fc.stroke();
+    }
+  }
+}
+
+const PUFFS = [];
+let puffT = 0;
+/* with the hot tarmac line gone, the wake she leaves is a drift of
+   daisies — denser and longer-lived, a flower trail down the road */
+function spawnPuff(ex, ey, dx, dy, dt){
+  puffT -= dt;
+  if(puffT > 0 || Math.abs(S.rate) < 60 || PUFFS.length > 22 || REDUCED) return;
+  puffT = 0.085 + Math.random() * 0.06;
+  PUFFS.push({ x: ex, y: ey, r: 3 + Math.random() * 2, a: .5,
+               vx: dx * 18 + (Math.random() - .5) * 8,
+               vy: dy * 18 - 5 + (Math.random() - .5) * 4,
+               rot: Math.random() * 6.28, vr: (Math.random() - .5) * 2.4,
+               petal: '#f6e7c8', core: '#f0a91d' });
+}
+/* the exhaust is flowers. Of course it is. */
+function drawDaisy(x, y, r, rot, a, petal, core){
+  fc.save();
+  fc.translate(x, y); fc.rotate(rot);
+  fc.globalAlpha = a;
+  fc.fillStyle = petal;
+  for(let i = 0; i < 5; i++){
+    const th = i / 5 * 6.2832;
+    fc.beginPath();
+    fc.arc(Math.cos(th) * r, Math.sin(th) * r, r * 0.62, 0, 6.2832);
+    fc.fill();
+  }
+  fc.fillStyle = core;
+  fc.beginPath(); fc.arc(0, 0, r * 0.52, 0, 6.2832); fc.fill();
+  fc.restore();
+  fc.globalAlpha = 1;
+}
+
+function drawPuffs(dt, t){
+  for(let i = PUFFS.length - 1; i >= 0; i--){
+    const q = PUFFS[i];
+    q.x += (q.vx + Math.sin(t * .002 + (q.rot || 0) * 3) * 6) * dt;
+    q.y += q.vy * dt;
+    q.vy -= dt * 6;                     // flowers float; smoke never did
+    q.r += dt * (q.flash ? 13 : q.solid ? 4 : q.big ? 6 : 3.5);
+    q.a -= dt * (q.flash ? 6 : q.solid ? .6 : q.big ? .5 : .4);
+    if(q.rot !== undefined) q.rot += q.vr * dt;
+    if(q.a <= 0){ PUFFS.splice(i, 1); continue; }
+    const sy = q.y - S.glide;
+    if(sy < -40 || sy > innerHeight + 40) continue;
+    if(q.flash){
+      fc.fillStyle = 'rgba(240,169,29,' + q.a.toFixed(3) + ')';
+      fc.beginPath(); fc.arc(q.x, sy, q.r * 1.3, 0, 6.2832); fc.fill();
+    } else {
+      // milestone blooms stay solid-inked to the end; exhaust is breath
+      drawDaisy(q.x, sy, q.r, q.rot, q.solid ? 1 : q.a, q.petal, q.core);
+    }
+  }
+}
+
+/* driving over a milestone daisy scatters it: a handful of solid-inked
+   blooms in the tour's colours float up and away */
+function badgeBloom(x, y){
+  if(REDUCED || PUFFS.length > 40) return;
+  const KINDS = [
+    { petal:'#fdf4dd', core:'#f0a91d' },
+    { petal:'#f0a91d', core:'#e04531' },
+    { petal:'#bd2168', core:'#f6e7c8' },
+    { petal:'#10907e', core:'#f6e7c8' }
+  ];
+  for(let i = 0; i < 5; i++){
+    const k = KINDS[i % KINDS.length];
+    PUFFS.push({ x: x + (Math.random() - .5) * 8, y: y + (Math.random() - .5) * 8,
+      r: 4 + Math.random() * 3, a: 1.4 + Math.random() * .4,
+      vx: (Math.random() - .5) * 44, vy: -14 - Math.random() * 26,
+      rot: Math.random() * 6.28, vr: (Math.random() - .5) * 3,
+      petal: k.petal, core: k.core, solid: 1 });
+  }
+}
+
+/* a backfire's bouquet: one marigold flash at the tailpipe, then a
+   burst of bigger blooms in the tour's spot colours */
+function bangPuffs(ex, ey, dx, dy){
+  PUFFS.push({ x: ex, y: ey, r: 5, a: .85, vx: dx * 24, vy: dy * 24 - 4, flash: 1 });
+  const KINDS = [
+    { petal:'#f6e7c8', core:'#f0a91d' },
+    { petal:'#bd2168', core:'#f6e7c8' },
+    { petal:'#10907e', core:'#f6e7c8' },
+    { petal:'#f0a91d', core:'#e04531' }
+  ];
+  for(let i = 0; i < 6; i++){
+    const k = KINDS[i % KINDS.length];
+    PUFFS.push({ x: ex + (Math.random() - .5) * 10, y: ey + (Math.random() - .5) * 10,
+      r: 3.5 + Math.random() * 3, a: .7 + Math.random() * .15,
+      vx: dx * (22 + Math.random() * 16) + (Math.random() - .5) * 14,
+      vy: dy * (22 + Math.random() * 16) - 8 - Math.random() * 8,
+      rot: Math.random() * 6.28, vr: (Math.random() - .5) * 3,
+      petal: k.petal, core: k.core, big: 1 });
+  }
+}
+
+const SPARKS = [];
+function drawSparks(dt, t){
+  const z = zones.camp;
+  if(!z) return;
+  const vis = z.bot > S.glide - 60 && z.top < S.glide + innerHeight + 60;
+  if(vis && !REDUCED && SPARKS.length < 42 && Math.random() < .55){
+    SPARKS.push({ x: z.fx + (Math.random() - .5) * 16, y: z.fy - 6,
+      vx: (Math.random() - .5) * 26, vy: -(34 + Math.random() * 50),
+      life: .9 + Math.random() * .9, r: 1 + Math.random() * 1.6,
+      hot: Math.random() < .3 });
+  }
+  for(let i = SPARKS.length - 1; i >= 0; i--){
+    const s = SPARKS[i];
+    s.x += (s.vx + Math.sin(t * .004 + s.y * .06) * 16) * dt;
+    s.y += s.vy * dt; s.vy *= (1 - dt * .5); s.life -= dt;
+    if(s.life <= 0){ SPARKS.splice(i, 1); continue; }
+    const sy = s.y - S.glide;
+    if(sy < -20 || sy > innerHeight + 20) continue;
+    const a = Math.min(1, s.life);
+    fc.fillStyle = s.hot ? 'rgba(246,231,200,' + a.toFixed(3) + ')'
+                         : 'rgba(240,169,29,' + (a * .9).toFixed(3) + ')';
+    fc.beginPath(); fc.arc(s.x, sy, s.r * Math.min(1, s.life + .3), 0, 6.2832); fc.fill();
+  }
+}
+
+function drawFx(t, prog, dt){
+  const W = innerWidth, H = innerHeight;
+  fc.clearRect(0, 0, W, H);
+  fgc.clearRect(0, 0, W, H);
+
+  const night  = smooth(0.30, 0.78, prog);
+  const drift  = S.swing;          // how far the road has swung off centre, -1..1
+  const glide  = S.glide;
+  const px = P.x, py = P.y;
+
+  const showA = smooth(0.42, 0.82, prog);
+  const softVisible = showA > 0.01 || night < 0.995;
+  if(softVisible) bgc.clearRect(0, 0, BW, BH);
+
+  /* --- cloud banks, lit by whatever colour the sky is --- */
+  for(const c of (W < 700 ? CLOUDS.slice(0,1) : CLOUDS)){
+    const cw = W * c.w / Q, ch = H * c.h / Q;
+    const base = -glide * c.d + py * c.d * 120;
+    const cy = (wrap(c.y * FH + base, FH) - (FH - H) / 2) / Q;
+    if(cy > -ch && cy < BH + ch){
+      const span = BW + cw;
+      const cx0 = wrap((t * c.sp * W - drift * c.d * 260 + px * c.d * 200) / Q, span) - cw / 2;
+      const al = c.a * (0.35 + 0.65 * (1 - night));
+      for(const cx of [cx0, cx0 - span]){
+        if(cx < -cw || cx > BW + cw) continue;
+        bgc.save();
+        bgc.translate(cx, cy); bgc.scale(1, ch / (cw / 2)); bgc.translate(-cx, -cy);
+        const g = bgc.createRadialGradient(cx, cy, 0, cx, cy, cw / 2);
+        g.addColorStop(0,   'rgba(246,231,200,' + al.toFixed(3) + ')');
+        g.addColorStop(0.45,'rgba(246,231,200,' + (al * 0.45).toFixed(3) + ')');
+        g.addColorStop(1,   'rgba(246,231,200,0)');
+        bgc.fillStyle = g;
+        bgc.beginPath(); bgc.arc(cx, cy, cw / 2, 0, 6.2832); bgc.fill();
+        bgc.restore();
+      }
+    }
+  }
+
+  /* --- nebula, once the light show starts --- */
+  if(showA > 0.01){
+    const span = Math.max(BW, BH);
+    bgc.globalCompositeOperation = 'lighter';
+    for(const b of BLOBS){
+      const x = ((b.ox + Math.sin(t * b.a) * 0.15 + Math.cos(t * b.b * 0.6) * 0.06) * W
+                - drift * b.d * 300 + px * b.d * 260) / Q;
+      const y = ((b.oy + Math.cos(t * b.b) * 0.12 + Math.sin(t * b.a * 0.8) * 0.05) * H
+                - glide * b.d * 0.16 + py * b.d * 200) / Q;
+      const r = span * b.r * (0.82 + 0.18 * Math.sin(t * b.a * 1.7 + b.k));
+      const g = bgc.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0,   'rgba(' + b.hue + ',' + (0.30 * showA).toFixed(3) + ')');
+      g.addColorStop(0.5, 'rgba(' + b.hue + ',' + (0.12 * showA).toFixed(3) + ')');
+      g.addColorStop(1,   'rgba(' + b.hue + ',0)');
+      bgc.fillStyle = g;
+      bgc.beginPath(); bgc.arc(x, y, r, 0, 6.2832); bgc.fill();
+    }
+    bgc.globalCompositeOperation = 'source-over';
+  }
+
+  // lift the soft layers up to full size in one blit
+  if(softVisible) fc.drawImage(bg, 0, 0, BW, BH, 0, 0, W, H);
+
+  /* --- the star bands --- */
+  if(night > 0.01){
+    const ox = (FW - W) / 2, oy = (FH - H) / 2;
+    for(const st of stars){
+      const band = BANDS[st.b];
+      const sx = wrap(st.x - drift * band.par * 3.4 + px * band.par, FW) - ox;
+      const sy = wrap(st.y - glide * band.depth + py * band.par * 0.5, FH) - oy;
+      if(sx < -30 || sx > W + 30 || sy < -60 || sy > H + 60) continue;
+
+      // near bands draw out into streaks when the scroll runs fast
+      const streak = clamp(S.rate * band.depth * 0.016, -46, 46);
+      const tw = REDUCED ? 0.85 : 0.55 + 0.45 * Math.sin(st.ph + t * 0.0012 * st.sp);
+      fc.globalAlpha = night * band.a * tw;
+      fc.fillStyle = fc.strokeStyle = st.c;
+      if(Math.abs(streak) > 1.6){
+        fc.lineWidth = st.r * 1.7; fc.lineCap = 'round';
+        fc.beginPath(); fc.moveTo(sx, sy); fc.lineTo(sx, sy - streak); fc.stroke();
+      } else {
+        fc.beginPath(); fc.arc(sx, sy, st.r, 0, 6.2832); fc.fill();
+      }
+    }
+    fc.globalAlpha = 1;
+  }
+
+  /* --- shooting stars --- */
+  if(!REDUCED){
+    updateShooters(dt, night);
+    for(const sh of SHOOTERS){
+      const g = fc.createLinearGradient(sh.x, sh.y, sh.x - sh.vx * 0.16, sh.y - sh.vy * 0.16);
+      g.addColorStop(0, 'rgba(246,231,200,' + (0.9 * sh.life * night).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(246,231,200,0)');
+      fc.strokeStyle = g; fc.lineWidth = 2; fc.lineCap = 'round';
+      fc.beginPath(); fc.moveTo(sh.x, sh.y);
+      fc.lineTo(sh.x - sh.vx * 0.16, sh.y - sh.vy * 0.16); fc.stroke();
+    }
+  }
+  fc.globalAlpha = 1;
+
+  /* --- birds, then the country, then the near lives --- */
+  updateBirds(dt, prog, t);
+  drawLand(t, prog, night);
+  drawPuffs(dt, t);
+  drawSparks(dt, t);
+}
+
+/* ---------------- paper grain, baked once ---------------- */
+(function grain(){
+  const s = 128, c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d'), img = g.createImageData(s,s), p = img.data;
+  for(let i = 0; i < p.length; i += 4){
+    const v = 118 + Math.random() * 74;
+    p[i] = p[i+1] = p[i+2] = v; p[i+3] = 26;
+  }
+  g.putImageData(img,0,0);
+  document.getElementById('grain').style.backgroundImage = 'url(' + c.toDataURL() + ')';
+})();
+
+/* ---------------- the speedo ----------------
+   Scroll velocity read as vybes per hour, ceilinged at a stately 60 —
+   the same throttle the engine revs on. */
+let hudSpd = '';
+function hud(){
+  const v = Math.min(60, Math.round(Math.abs(S.rate) / 14.4));
+  const s = String(v);
+  if(s !== hudSpd){
+    hudSpd = s;
+    dSpd.textContent = s;
+    spdBar.style.width = (v / 60 * 100).toFixed(1) + '%';
+  }
+}
+
+/* ---------------- the loop ----------------
+   One rAF. The van's position, heading, lean, the lit road behind her,
+   the sky grade, the streaming country and the dashboard all fall out
+   of a single number.
+   ---------------------------------------------------------------- */
+let last = 0, heading = 90, flipY = 1, lean = 0, leanV = 0;
+let wheelRot = 0, prevWheelLen = 0;
+let wsPhase = 0, tickX = 0;
+let wsSh = null, wsShT = 5;   // the windscreen's own shooting star
+
+function frame(now){
+  const dt = Math.min(0.05, (now - last) / 1000) || 0.016;
+  last = now;
+
+  const k = 118, damp = 2 * Math.sqrt(k);
+  S.sv += ((S.y - S.glide) * k - S.sv * damp) * dt;
+  const prev = S.glide;
+  S.glide += S.sv * dt;
+
+  const delta = S.glide - prev;
+  S.rate = delta / dt;
+  S.dist += delta;
+  S.prog = clamp(S.glide / maxScroll, 0, 1);
+
+  // ease the pointer, and let the intro roll her onto the road
+  P.x += (P.tx - P.x) * Math.min(1, dt * 3.2);
+  P.y += (P.ty - P.y) * Math.min(1, dt * 3.2);
+  if(intro < 1) intro = Math.min(1, intro + dt * 0.7);
+
+  const night = smooth(0.30, 0.78, S.prog);
+  const g = gradeAt(S.prog);
+  const key = rgb(g.top) + rgb(g.mid) + rgb(g.low);
+  if(key !== lastGrade){
+    lastGrade = key;
+    skyStyle.setProperty('--sky-top', rgb(g.top));
+    skyStyle.setProperty('--sky-mid', rgb(g.mid));
+    skyStyle.setProperty('--sky-low', rgb(g.low));
+  }
+
+  /* --- sun and moon. The sun flattens and swells as it meets the
+         horizon, the way a real one does through thick air --- */
+  const sunT = clamp(S.prog / 0.46, 0, 1.3);
+  const setT = smooth(0.28, 0.44, S.prog);
+  sunEl.style.transform = 'translate(' + (71 + sunT * 16 - S.swing * 2.2 + P.x * 0.9) + 'vw,' +
+    (58 + sunT * sunT * 30 + P.y * 0.7) + 'vh)' +
+    ' scale(' + (1 + setT * 0.14).toFixed(3) + ',' + (1 - setT * 0.24).toFixed(3) + ')';
+  sunEl.style.opacity = (1 - smooth(0.40, 0.52, S.prog)).toFixed(3);
+  const moonT = smooth(0.54, 1.0, S.prog);
+  moonEl.style.transform = 'translate(' + (74 - moonT * 46 - S.swing * 3.4 + P.x * 1.5) + 'vw,' +
+    (78 - moonT * 62 + P.y * 1.1) + 'vh)';
+  moonEl.style.opacity = moonT.toFixed(3);
+
+  /* --- the traveller drives the spine --- */
+  if(PATH_LEN > 0){
+    // the intro rolls her onto her mark — the crest of the opening arch
+    // on wide screens, a little way down the road on narrow ones
+    const mark = ARCH_MARK;
+    const ease = intro * intro * (3 - 2 * intro);
+    const START = 36 + (mark - 36) * ease;
+    const linear = START + S.prog * Math.max(1, PATH_LEN - mark);
+    // once rolling she keeps station near the middle of the screen,
+    // easing off the arch at the start and onto the clearing at the end
+    let len = linear;
+    const wEnd = smooth(0.86, 0.985, S.prog);
+    const wMid = smooth(0.04, 0.14, S.prog) * (1 - wEnd);
+    if(wMid > 0.001){
+      const midLen = lengthAtY(clamp(S.glide + innerHeight * 0.5, AY_SAFE, PAGE_H - 40));
+      len = linear * (1 - wMid) + midLen * wMid;
+    }
+    len = len * (1 - wEnd) + PATH_LEN * wEnd;
+    const p = roadBase.getPointAtLength(Math.min(len, PATH_LEN));
+    // The tangent comes from the path itself. Straddle the point rather
+    // than sampling ahead: at the very end an ahead-sample clamps onto
+    // itself and the tangent collapses.
+    const t0 = Math.max(0, Math.min(PATH_LEN - 2, len - 1));
+    const a  = roadBase.getPointAtLength(t0);
+    const q  = roadBase.getPointAtLength(Math.min(PATH_LEN, t0 + 2));
+    const tl = Math.hypot(q.x - a.x, q.y - a.y) || 1;
+    const nx = (q.x - a.x) / tl, ny = (q.y - a.y) / tl;
+
+    // Her nose stays in line with the road — and travelling right-to-left
+    // she mirrors across the path (with hysteresis, so the long vertical
+    // stretches don't make her shimmer), which keeps her wheels on the
+    // road and her roof to the sky. She arrives at the clearing level,
+    // nose right.
+    const rawHeading = Math.atan2(ny, nx) * 57.2958;
+    let dh = rawHeading - heading;
+    dh = ((dh + 180) % 360 + 360) % 360 - 180;     // the shortest way round
+    heading += dh * Math.min(1, dt * 9);
+    if(Math.abs(nx) > 0.22) flipY = nx >= 0 ? 1 : -1;
+
+    // the body leans into the bend, and settles on a spring when it stops
+    const targetLean = clamp(-S.rate * 0.0012, -4, 4);
+    const lk = 90, ld = 2 * Math.sqrt(90) * 0.6;
+    leanV += ((targetLean - lean) * lk - leanV * ld) * dt;
+    lean += leanV * dt;
+
+    // and rides its suspension when the road is quick under her
+    const bob = Math.sin(now * 0.02) * Math.min(2.2, Math.abs(S.rate) * 0.004);
+
+    const BUS = (PAGE_W <= 720 ? 0.92 : 1.42) * (0.72 + 0.28 * ease);
+    traveller.setAttribute('transform',
+      'translate(' + p.x.toFixed(2) + ',' + p.y.toFixed(2) + ') rotate(' +
+      heading.toFixed(2) + ') scale(' + BUS.toFixed(3) + ',' + (BUS * flipY).toFixed(3) + ')');
+    if(ease < 1) traveller.style.opacity = ease.toFixed(3);
+    else if(traveller.style.opacity !== '') traveller.style.opacity = '';
+    tvBody.setAttribute('transform',
+      'rotate(' + lean.toFixed(2) + ') translate(0,' + bob.toFixed(2) + ')');
+
+    // the wheels genuinely roll: distance covered over wheel radius
+    wheelRot += (len - prevWheelLen) / (8.5 * Math.max(0.2, BUS)) * 57.2958;
+    prevWheelLen = len;
+    const wr = (wheelRot % 360).toFixed(1);
+    whA.setAttribute('transform', 'rotate(' + wr + ' -20 15)');
+    whB.setAttribute('transform', 'rotate(' + wr + ' 22 15)');
+
+    // how far the road has swung off centre — the whole world answers this
+    S.swing = clamp((p.x - PAGE_W / 2) / (PAGE_W * 0.4), -1, 1);
+
+    // the road she has already covered stays lit behind her
+    travelClip.setAttribute('height', Math.max(0, p.y + 4).toFixed(1));
+
+    // the dashes flow under her, faster the faster you scroll
+    dashPhase -= Math.abs(delta) * 1.15 + dt * 22;
+    const flow = dashPhase.toFixed(1);
+    roadBase.style.strokeDashoffset = flow;
+    roadLit.style.strokeDashoffset  = flow;   // in register, or the road reads doubled
+
+    // each stop ignites as she reaches it — a toot of the horn, and the
+    // milestone daisy bursts into blooms that float away
+    for(const bd of badgeLens){
+      if(!bd.lit && len >= bd.at){
+        bd.lit = true; bd.g.classList.add('passed');
+        if(!freshBadges){ horn(); badgeBloom(bd.x, bd.y); }
+      }
+      else if(bd.lit && len < bd.at - 30){ bd.lit = false; bd.g.classList.remove('passed'); }
+    }
+
+    // headlamps come on with the dark
+    tvBeam.setAttribute('opacity', smooth(0.36, 0.62, S.prog).toFixed(3));
+
+    // a breath of exhaust from the tailpipe at her rear
+    const hr = heading * Math.PI / 180, hc = Math.cos(hr), hs = Math.sin(hr);
+    const exX = p.x + BUS * (-42 * hc - 8 * flipY * hs);
+    const exY = p.y + BUS * (-42 * hs + 8 * flipY * hc);
+    if(p.y > S.glide - 150 && p.y < S.glide + innerHeight + 150)
+      spawnPuff(exX, exY, -hc, -hs, dt);
+
+    // and on the overrun between stops, the backfires — paced by miles
+    // covered, roughly eight over the length of the road
+    if(Math.abs(S.rate) > 250){
+      fireOdo += Math.abs(delta);
+      if(fireOdo >= nextFire && PUFFS.length < 30 &&
+         p.y > S.glide - 120 && p.y < S.glide + innerHeight + 120){
+        nextFire = fireOdo + maxScroll * (0.10 + Math.random() * 0.035);
+        bangPuffs(exX, exY, -hc, -hs);
+        backfire();
+      }
+    }
+
+    // and once on arrival, where the road runs out at the campfire —
+    // one last backfire and a toot as she parks up
+    if(len >= PATH_LEN - 2){
+      if(!arrived){
+        arrived = true;
+        if(!freshBadges){ bangPuffs(exX, exY, -hc, -hs); backfire(); horn(); }
+      }
+    } else if(arrived && len < PATH_LEN - 400){
+      arrived = false;
+      if(noteBusEl) noteBusEl.classList.remove('on');
+    }
+    freshBadges = false;
+  }
+
+  /* --- the windscreen: she drives herself, and the world through the
+         glass keeps pace — but only while it is actually on screen --- */
+  if(onScreen(zones.screen)){
+    if(helm){
+      // she steers the S you can see through the glass: a gentle
+      // correction each way as the bends flow under her
+      const bend = Math.sin(wsPhase * 6.2832) * 13;
+      helm.style.transform = 'rotate(' + bend.toFixed(2) + 'deg)';
+    }
+    if(!REDUCED){
+      wsPhase = wrap(wsPhase + dt * (0.22 + Math.min(2200, Math.abs(S.rate)) * 0.00028), 1);
+      for(let i = 0; i < wsDaisies.length; i++){
+        const tt = wrap(wsPhase + i / wsDaisies.length, 1);
+        const e = tt * tt;
+        // the centre line follows the S of the winding road
+        const y = 106 + e * 74, sc = 0.5 + e * 2.2;
+        const dx2 = 207 + 20 * e + 26 * Math.sin(e * Math.PI);
+        const g = wsDaisies[i];
+        g.setAttribute('transform', 'translate(' + dx2.toFixed(1) + ',' + y.toFixed(1) +
+          ') scale(' + sc.toFixed(2) + ') rotate(' + (tt * 160).toFixed(0) + ')');
+        g.setAttribute('opacity', (0.15 + 0.85 * e).toFixed(2));
+      }
+      // and the wake recedes in the doubled mirror
+      for(let i = 0; i < mvDaisies.length; i++){
+        const er = wrap(wsPhase * 0.8 + i / mvDaisies.length, 1);
+        const my = 26 - er * 11, msc = Math.max(0.12, 0.85 - er * 0.6);
+        const mx = 211 + Math.sin(er * Math.PI) * 8;
+        const g2 = mvDaisies[i];
+        g2.setAttribute('transform', 'translate(' + mx.toFixed(1) + ',' + my.toFixed(1) +
+          ') scale(' + msc.toFixed(2) + ')');
+        g2.setAttribute('opacity', (1 - er * 0.85).toFixed(2));
+      }
+      // four depths of country slide past the glass at their own rates
+      wsMtns.setAttribute('transform',
+        'translate(' + (-wrap(S.dist * 0.02, 380)).toFixed(1) + ',0)');
+      wsHills.setAttribute('transform',
+        'translate(' + (-wrap(S.dist * 0.05, 380)).toFixed(1) + ',0)');
+      wsTrees.setAttribute('transform',
+        'translate(' + (-wrap(S.dist * 0.08, 380)).toFixed(1) + ',0)');
+      wsPolesEl.setAttribute('transform',
+        'translate(' + (-wrap(S.dist * 0.11, 380)).toFixed(1) + ',0)');
+      // and now and then a star falls across the glass
+      wsShT -= dt;
+      if(!wsSh && wsShT <= 0 && night > 0.25)
+        wsSh = { x: 140 + Math.random() * 200, y: 26 + Math.random() * 50, life: 1 };
+      if(wsSh){
+        wsSh.x -= dt * 150; wsSh.y += dt * 55; wsSh.life -= dt * 1.3;
+        if(wsSh.life <= 0){
+          wsSh = null; wsShT = 6 + Math.random() * 9;
+          wsShootEl.setAttribute('opacity', '0');
+        } else {
+          wsShootEl.setAttribute('opacity', (Math.min(1, wsSh.life) * 0.9).toFixed(2));
+          wsShootEl.setAttribute('transform',
+            'translate(' + wsSh.x.toFixed(1) + ',' + wsSh.y.toFixed(1) + ')');
+        }
+      }
+    }
+    wsStars.setAttribute('opacity', (0.25 + 0.75 * night).toFixed(2));
+  }
+
+  /* --- the departure board crawls, and hurries when you do --- */
+  if(!REDUCED && tickW > 0 && onScreen(zones.ticker, 60)){
+    tickX -= dt * (26 + Math.min(900, Math.abs(S.rate)) * 0.09);
+    if(tickX <= -tickW) tickX += tickW;
+    tickerEl.style.transform = 'translate3d(' + tickX.toFixed(1) + 'px,0,0)';
+  }
+
+  /* --- the engine answers the throttle: scroll velocity maps to revs,
+         brightness and breath, gliding on setTargetAtTime --- */
+  if(audio && soundOn){
+    audioT -= dt;
+    if(audioT <= 0){
+      audioT = 0.09;
+      const spd = clamp(Math.abs(S.rate) / 2600, 0, 1);
+      const at = audio.ctx.currentTime, tc = 0.15;
+      audio.engineSrc.playbackRate.setTargetAtTime(0.84 + spd * 1.00, at, tc);
+      audio.lowpass.frequency.setTargetAtTime(1050 + spd * 1600, at, tc);
+      audio.engineGain.gain.setTargetAtTime(0.062 + spd * 0.046, at, tc);
+      audio.noiseGain.gain.setTargetAtTime(0.009 + spd * 0.020, at, tc);
+    }
+  }
+
+  hud();
+  drawFx(now, S.prog, dt);
+  requestAnimationFrame(frame);
+}
+
+/* ---------------- static world when motion is unwelcome ----------------
+   Not a lesser page: one considered still — dusk, fireflies out, the
+   country standing, the van on her mark with the lamps lit. */
+function still(){
+  S.prog = 0.72; S.dist = 420; S.swing = 0; S.rate = 0;
+  const g = gradeAt(0.72);
+  skyStyle.setProperty('--sky-top', rgb(g.top));
+  skyStyle.setProperty('--sky-mid', rgb(g.mid));
+  skyStyle.setProperty('--sky-low', rgb(g.low));
+  sunEl.style.opacity = 0;
+  moonEl.style.opacity = 1;
+  moonEl.style.transform = 'translate(30vw,20vh)';
+  // road fully drawn, van parked just below the headline
+  travelClip.setAttribute('height', PAGE_H);
+  if(PATH_LEN > 0){
+    const p = roadBase.getPointAtLength(PATH_LEN * 0.06);
+    const sc = PAGE_W <= 720 ? 0.92 : 1.42;
+    traveller.setAttribute('transform',
+      'translate(' + p.x + ',' + p.y + ') rotate(90) scale(' + sc + ')');
+  }
+  tvBeam.setAttribute('opacity', 1);
+  if(wsStars) wsStars.setAttribute('opacity', '0.8');
+  hud();
+  drawFx(0, 0.72, 0.016);
+}
+
+/* ---------------- hands on the page: tilt and magnetism ---------------- */
+function wireHands(){
+  if(REDUCED || COARSE) return;
+
+  // each ticket answers the hand above it
+  document.querySelectorAll('.ticket').forEach(tk => {
+    tk.addEventListener('pointermove', e => {
+      const r = tk.getBoundingClientRect();
+      const nx = (e.clientX - r.left) / r.width  - 0.5;
+      const ny = (e.clientY - r.top)  / r.height - 0.5;
+      tk.style.setProperty('--rx', (-ny * 7).toFixed(2) + 'deg');
+      tk.style.setProperty('--ry', ( nx * 9).toFixed(2) + 'deg');
+      tk.classList.add('tilting');
+    });
+    tk.addEventListener('pointerleave', () => {
+      tk.classList.remove('tilting');
+      tk.style.setProperty('--rx', '0deg');
+      tk.style.setProperty('--ry', '0deg');
+    });
+  });
+
+  // the boarding pass drifts toward a hand that comes near
+  const finale = document.querySelector('.finale');
+  if(finale && boardEl){
+    finale.addEventListener('pointermove', e => {
+      const r = boardEl.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      boardEl.style.transform = Math.hypot(dx, dy) < 170
+        ? 'translate(' + (dx * 0.2).toFixed(1) + 'px,' + (dy * 0.2).toFixed(1) + 'px)'
+        : '';
+    });
+    finale.addEventListener('pointerleave', () => { boardEl.style.transform = ''; });
+  }
+}
+
+/* ----------------------------------------------------------------
+   THE ENGINE ROOM
+   Every sound on this page is synthesised on the spot with the Web
+   Audio API — no files, and nothing is built (not even the
+   AudioContext) until the sound toggle is pressed.
+   ---------------------------------------------------------------- */
+let audio = null, soundOn = false, lastHornT = -10, audioT = 0;
+let freshBadges = true, arrived = false;
+/* backfires are paced by distance covered, not time — about eight of
+   them over the full length of the road */
+let fireOdo = 0, nextFire = Infinity;
+const soundBtn = document.getElementById('soundToggle');
+
+function buildAudio(){
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new Ctx();
+  // iOS mutes web audio behind the ringer switch unless the page
+  // declares itself a playback session
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e){}
+  const sr = ctx.sampleRate;
+
+  /* The engine is NOT a tone through a filter — that is a synth bass.
+     An air-cooled flat-four is a train of firing impulses: one looping
+     second holding 26 chuffs (about 800rpm over four cylinders), revved
+     by playbackRate. The exhaust noise is what carries the character,
+     and the energy sits in the 400Hz–1kHz band a small speaker can
+     actually reproduce. */
+  const len = sr, buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
+  const FIRES = 26, period = len / FIRES;
+  for(let i = 0; i < FIRES; i++){
+    const start = Math.floor(i * period);
+    // no two cylinders on a used engine match
+    const amp = 0.9 + 0.22 * Math.sin(i * 1.7) + 0.08 * Math.sin(i * 5.3);
+    const res = 430 + 90 * Math.sin(i * 2.1);
+    const dur = Math.floor(sr * 0.09);
+    for(let k = 0; k < dur; k++){
+      const t = k / sr;
+      const body = Math.exp(-t / 0.020), puff = Math.exp(-t / 0.011);
+      d[(start + k) % len] += amp * (          // wrap: the loop stays seamless
+        Math.sin(6.2832 * 108 * t) * 0.50 * body +   // the thump
+        Math.sin(6.2832 * res * t) * 0.30 * body +   // the exhaust ring
+        (Math.random() * 2 - 1) * 0.75 * puff);      // the air
+    }
+  }
+  let pk = 0;
+  for(let i = 0; i < len; i++){ const a = Math.abs(d[i]); if(a > pk) pk = a; }
+  if(pk > 0) for(let i = 0; i < len; i++) d[i] /= pk;
+
+  /* the cooling fan: a lowpassed random walk, its seam crossfaded away */
+  const nlen = sr * 2, nbuf = ctx.createBuffer(1, nlen, sr), nd = nbuf.getChannelData(0);
+  let walk = 0;
+  for(let i = 0; i < nlen; i++){
+    walk = walk * 0.94 + (Math.random() * 2 - 1) * 0.06;
+    nd[i] = walk * 3.2;
+  }
+  const xf = Math.floor(sr * 0.05);
+  for(let i = 0; i < xf; i++){
+    const w = i / xf;
+    nd[i] = nd[i] * w + nd[nlen - xf + i] * (1 - w);
+  }
+
+  const engineSrc = ctx.createBufferSource();
+  engineSrc.buffer = buf; engineSrc.loop = true;
+  engineSrc.playbackRate.value = 0.84;
+  const noiseSrc = ctx.createBufferSource();
+  noiseSrc.buffer = nbuf; noiseSrc.loop = true;
+  const noiseGain = ctx.createGain();  noiseGain.gain.value = 0.010;
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = 'lowpass'; lowpass.frequency.value = 1150; lowpass.Q.value = 0.9;
+  const engineGain = ctx.createGain(); engineGain.gain.value = 0.062;
+  const master = ctx.createGain();     master.gain.value = 0;   // silent until enabled
+
+  engineSrc.connect(lowpass);
+  noiseSrc.connect(noiseGain); noiseGain.connect(lowpass);
+  lowpass.connect(engineGain); engineGain.connect(master);
+  master.connect(ctx.destination);
+  engineSrc.start(); noiseSrc.start();
+
+  return { ctx, master, engineGain, noiseGain, lowpass, engineSrc };
+}
+
+/* beep-beep: two blasts, the second slightly longer, each three voices
+   stacked the way real horns stack — a third apart, sawtooth on top for
+   grit. Cooled down so fast scrolling cannot machine-gun it; milestones
+   that sit close together collapse into one horn, which is correct. */
+function horn(){
+  if(!audio || !soundOn) return;
+  const ctx = audio.ctx, now = ctx.currentTime;
+  if(now - lastHornT < 1.15) return;
+  lastHornT = now;
+  for(const blast of [[0, 0.16], [0.25, 0.19]]){
+    const t0 = now + blast[0] + 0.01, dur = blast[1];
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);              // never ramp from true zero
+    g.gain.exponentialRampToValueAtTime(0.13, t0 + 0.014);
+    g.gain.setValueAtTime(0.13, t0 + Math.max(0.02, dur - 0.035));
+    g.gain.exponentialRampToValueAtTime(0.0006, t0 + dur);
+    g.connect(audio.master);
+    for(const v of [[392, 'square', 1.0], [494, 'square', 0.8], [784, 'sawtooth', 0.2]]){
+      const o = ctx.createOscillator();
+      o.type = v[1]; o.frequency.value = v[0];
+      const vg = ctx.createGain(); vg.gain.value = v[2];
+      o.connect(vg); vg.connect(g);
+      o.start(t0); o.stop(t0 + dur + 0.03);
+    }
+  }
+}
+
+/* the backfire: unburnt fuel meeting a hot exhaust — a hard noise crack
+   with a low pop under it, bandpassed so the energy stays where small
+   speakers live. Sometimes it double-pops, as they do. */
+function backfire(){
+  if(!audio || !soundOn) return;
+  const ctx = audio.ctx, now = ctx.currentTime;
+  if(now - lastHornT < 1.2) return;      // never on top of the horn
+  const pop = (t0, mag) => {
+    const dur = 0.22, n = Math.floor(ctx.sampleRate * dur);
+    const b = ctx.createBuffer(1, n, ctx.sampleRate);
+    const dd = b.getChannelData(0);
+    for(let i = 0; i < n; i++){
+      const t = i / ctx.sampleRate;
+      dd[i] = (Math.random() * 2 - 1) *
+                (1.3 * Math.exp(-t / 0.013) + 0.25 * Math.exp(-t / 0.07))
+            + Math.sin(6.2832 * 120 * t) * 0.8 * Math.exp(-t / 0.05);
+    }
+    const src = ctx.createBufferSource(); src.buffer = b;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 560; bp.Q.value = 0.9;
+    const g = ctx.createGain(); g.gain.value = 0.5 * mag;
+    src.connect(bp); bp.connect(g); g.connect(audio.master);
+    src.start(t0);
+  };
+  pop(now, 1);
+  if(Math.random() < 0.4) pop(now + 0.09 + Math.random() * 0.05, 0.5);
+}
+
+function rampMaster(v){
+  const g = audio.master.gain, t = audio.ctx.currentTime;
+  g.cancelScheduledValues(t);
+  g.setValueAtTime(Math.max(0.0001, g.value), t);
+  g.linearRampToValueAtTime(v, t + 0.35);
+}
+
+function wireSound(){
+  if(!soundBtn) return;
+  const setFace = () => {
+    soundBtn.setAttribute('aria-pressed', String(soundOn));
+    soundBtn.textContent = soundOn ? 'Sound on' : 'Sound off';
+    soundBtn.classList.toggle('on', soundOn);
+  };
+  soundBtn.addEventListener('click', async () => {
+    try {
+      if(!audio){
+        audio = buildAudio();
+        await audio.ctx.resume();
+        // some browsers settle state a tick after resume() resolves
+        await new Promise(r => setTimeout(r, 150));
+        if(audio.ctx.state !== 'running'){
+          soundBtn.textContent = 'Sound blocked';
+          return;
+        }
+        soundOn = true; setFace();
+        rampMaster(1);
+        horn();                        // a greeting
+        return;
+      }
+      soundOn = !soundOn; setFace();
+      if(soundOn){ await audio.ctx.resume(); rampMaster(1); }
+      else {
+        rampMaster(0);
+        setTimeout(() => { if(audio && !soundOn) audio.ctx.suspend(); }, 500);
+      }
+    } catch(err){
+      soundBtn.textContent = 'Sound blocked';
+      if(window.console) console.error('camper: sound disabled —', err);
+    }
+  });
+}
+
+/* the campsite invitations: hover the dome or the Telegram tent */
+function wireCampNotes(){
+  for(const pair of [['domeHot','noteDome'], ['tgHot','noteTg']]){
+    const hot = document.getElementById(pair[0]);
+    const note = document.getElementById(pair[1]);
+    if(!hot || !note) continue;
+    hot.addEventListener('pointerenter', () => note.classList.add('on'));
+    hot.addEventListener('pointerleave', () => note.classList.remove('on'));
+  }
+  // the camper herself, once she has parked up in her bay
+  const busHot = document.getElementById('busHot');
+  if(busHot && noteBusEl){
+    busHot.addEventListener('pointerenter', () => { if(arrived) noteBusEl.classList.add('on'); });
+    busHot.addEventListener('pointerleave', () => noteBusEl.classList.remove('on'));
+  }
+}
+
+/* ---------------- start the drive ----------------
+   Wrapped: if the world cannot be drawn on this device, the page is
+   still a complete, readable poster. */
+try {
+  addEventListener('scroll', () => {
+    S.y = scrollY;
+    if(scrollY > 60) document.documentElement.classList.add('rolling');
+    else document.documentElement.classList.remove('rolling');
+  }, { passive:true });
+  if(!REDUCED){
+    addEventListener('pointermove', (e) => {
+      P.tx = (e.clientX / innerWidth  - 0.5) * 2;
+      P.ty = (e.clientY / innerHeight - 0.5) * 2;
+    }, { passive:true });
+  }
+  requestAnimationFrame(() => document.documentElement.classList.add('ready'));
+  let rt = 0;
+  addEventListener('resize', () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => { measure(); if(REDUCED) still(); }, 120);
+  }, { passive:true });
+
+  measure();
+  wireHands();
+  wireSound();
+  wireCampNotes();
+  S.y = S.glide = scrollY;
+  if(REDUCED) still(); else requestAnimationFrame(frame);
+} catch(err){
+  showAll();
+  // surface it: a swallowed warning hid a real fault here once
+  if(window.console) console.error('camper: world disabled —', err);
+}
+})();
+</script>
+</body>
+</html>
