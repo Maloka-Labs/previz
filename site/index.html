@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0a14" />
+  <title>Maloka Labs — The Dome</title>
+  <meta name="description" content="Maloka Labs — a living geodesic dome where every facet is a facet of what we are building. A summer meadow laced with the cosmos." />
+  <meta property="og:title" content="Maloka Labs — The Dome" />
+  <meta property="og:description" content="Every facet of the dome is a facet of our plans. A hyper-real summer meadow laced with the interstellar." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="./assets/img/social.svg" />
+  <link rel="icon" type="image/svg+xml" href="./assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Rozha+One&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles/main.css" />
+</head>
+<body>
+  <div id="loader" aria-hidden="true">
+    <div class="loader__inner">
+      <svg class="loader__mark" viewBox="0 0 100 100" aria-hidden="true"><g id="loaderDome" fill="none" stroke-width="1.1" stroke-linejoin="round"></g></svg>
+      <div class="loader__meta"><span class="loader__label">MALOKA LABS</span><span class="loader__count"><span id="loaderNum">0</span><span class="loader__pct">%</span></span></div>
+      <div class="loader__bar"><span id="loaderFill"></span></div>
+      <p class="loader__hint">assembling the dome — panel by panel</p>
+    </div>
+  </div>
+
+  <div id="webgl"></div>
+  <div id="cinematic" aria-hidden="true"></div>
+  <div id="grain" aria-hidden="true"></div>
+
+  <header id="nav" class="nav">
+    <a class="nav__brand" href="#top" data-scramble>MALOKA&nbsp;LABS</a>
+    <nav class="nav__links">
+      <a href="#facets" data-scramble>Facets</a>
+      <a href="#manifesto" data-scramble>Manifesto</a>
+      <a href="#contact" data-scramble>Contact</a>
+    </nav>
+    <button class="nav__sound" id="soundToggle" aria-label="Toggle ambient sound" title="Ambient sound"><span class="nav__sound-bars"><i></i><i></i><i></i><i></i></span></button>
+  </header>
+
+  <main id="content">
+    <section class="panel panel--hero" id="top" data-scene="0">
+      <div class="panel__center">
+        <p class="eyebrow" data-reveal>A LIVING GEODESIC DOME · EST. SUMMER</p>
+        <h1 class="display" data-reveal>
+          <span class="display__line">We grow</span>
+          <span class="display__line display__line--accent">cathedrals</span>
+          <span class="display__line">of light.</span>
+        </h1>
+        <p class="lede" data-reveal>A hippie geodome dropped in a hyper-real summer meadow, threaded with the cosmos. Every panel is a facet of what we are building.</p>
+        <div class="scrollcue" data-reveal><span></span>scroll</div>
+      </div>
+    </section>
+
+    <section class="panel panel--left" data-scene="1">
+      <div class="panel__box glass">
+        <p class="eyebrow" data-reveal>01 — THE MEADOW</p>
+        <h2 class="serif-xl" data-scramble-on-view>Flower power, at planetary scale.</h2>
+        <p class="body" data-reveal>We started where the 1960s left off: Drop City, southern Colorado, a commune of painters welding scavenged car-tops into rainbow domes. We kept the optimism and the color — and traded the high desert winter for an endless lush summer.</p>
+      </div>
+    </section>
+
+    <section class="panel panel--facets" id="facets" data-scene="2">
+      <div class="facets__intro">
+        <p class="eyebrow" data-reveal>02 — THE FACETS</p>
+        <h2 class="serif-xl" data-scramble-on-view>One dome.<br />Many facets.</h2>
+        <p class="body" data-reveal>Like the Wylde Diamond, each face of the dome turns to reveal a different facet of Maloka. Hover a panel. Tap to step inside.</p>
+      </div>
+      <aside class="facet-card glass" id="facetCard" aria-live="polite">
+        <span class="facet-card__index" id="facetIndex">00</span>
+        <h3 class="facet-card__title" id="facetTitle">Select a facet</h3>
+        <p class="facet-card__desc" id="facetDesc">Move across the dome to illuminate a facet of our plans.</p>
+        <ul class="facet-card__tags" id="facetTags"></ul>
+      </aside>
+      <nav class="facet-dots" id="facetDots" aria-label="Facets"></nav>
+    </section>
+
+    <section class="panel panel--center" id="manifesto" data-scene="3">
+      <div class="panel__center">
+        <p class="eyebrow" data-reveal>03 — THE COCKTAIL</p>
+        <blockquote class="manifesto" data-reveal>“Build like a garden, dream like a galaxy. The dome is summer on the outside and <em>interstellar</em> on the inside — a cathedral where flower power meets deep field.”</blockquote>
+        <p class="body body--wide" data-reveal>Maloka Labs is a studio for impossible, beautiful things. The geodome is our table of contents — turn it, and the whole company shows its colors.</p>
+      </div>
+    </section>
+
+    <section class="panel panel--footer" id="contact" data-scene="4">
+      <div class="footer__center">
+        <p class="eyebrow" data-reveal>HOVER TO SHAPE THE FIELD</p>
+        <h2 class="display display--footer" data-reveal>Come build<br />in the light.</h2>
+        <ul class="footer__links" id="footerLinks">
+          <li><a href="#" data-morph="flower" data-scramble>The Studio</a></li>
+          <li><a href="#" data-morph="diamond" data-scramble>The Diamond</a></li>
+          <li><a href="#" data-morph="dome" data-scramble>The Dome</a></li>
+          <li><a href="#" data-morph="star" data-scramble>The Cosmos</a></li>
+        </ul>
+        <a class="footer__cta" href="mailto:hello@maloka.example" data-scramble>hello@maloka.example</a>
+        <p class="footer__fine">© <span id="year"></span> Maloka Labs — grown in a browser, in real time.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="fallback" hidden>
+    <div class="fallback__inner">
+      <h1 class="display">Maloka Labs</h1>
+      <p class="lede">Your browser can't render the live dome. The full experience needs WebGL2.</p>
+      <p class="body">Every facet of our geodome is a facet of what we are building — a summer meadow laced with the cosmos.</p>
+    </div>
+  </div>
+
+  <!-- APP — all libraries bundled locally (no CDN, works offline) -->
+  <script src="./dist/maloka.bundle.js"></script>
+</body>
+</html>

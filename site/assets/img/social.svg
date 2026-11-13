@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="120%" r="130%"><stop offset="0%" stop-color="#ff9e3d"/><stop offset="32%" stop-color="#ff5d8f"/><stop offset="64%" stop-color="#8a5cff"/><stop offset="100%" stop-color="#0b0a14"/></radialGradient>
+    <linearGradient id="gold" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#f4efe3"/><stop offset="100%" stop-color="#f4c95d"/></linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#sky)"/>
+  <g fill="#f4efe3" opacity="0.85"><circle cx="120" cy="90" r="2"/><circle cx="300" cy="60" r="1.4"/><circle cx="980" cy="80" r="2.2"/><circle cx="1100" cy="150" r="1.6"/><circle cx="200" cy="180" r="1.2"/><circle cx="860" cy="140" r="1.5"/></g>
+  <g fill="none" stroke="url(#gold)" stroke-width="2" stroke-linejoin="round" opacity="0.9" transform="translate(600 470)">
+    <path d="M-210 0 A210 210 0 0 1 210 0"/><path d="M-150 0 A150 150 0 0 1 150 0"/><path d="M-82 0 A82 82 0 0 1 82 0"/>
+    <line x1="0" y1="-210" x2="0" y2="0"/><line x1="-198" y1="-70" x2="198" y2="-70"/><line x1="-130" y1="-118" x2="130" y2="-118"/><line x1="-210" y1="0" x2="210" y2="0"/>
+    <line x1="-150" y1="0" x2="-60" y2="-140"/><line x1="150" y1="0" x2="60" y2="-140"/><line x1="-82" y1="0" x2="-130" y2="-118"/><line x1="82" y1="0" x2="130" y2="-118"/>
+  </g>
+  <text x="600" y="250" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="96" fill="#f4efe3">Maloka Labs</text>
+  <text x="600" y="300" text-anchor="middle" font-family="monospace" letter-spacing="8" font-size="22" fill="#f4c95d">EVERY FACET IS A FACET OF WHAT WE BUILD</text>
+</svg>

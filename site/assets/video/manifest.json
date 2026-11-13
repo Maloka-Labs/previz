@@ -1,0 +1,4 @@
+{
+  "_comment": "Drop Kling/Higgsfield .mp4 clips into this folder and list them below to blend them over the live WebGL. 'range' is scroll progress 0..1; 'blend' is any CSS mix-blend-mode (screen works great for cosmic clips); 'max' caps opacity. See prompts/VIDEO_PROMPTS.md.",
+  "layers": []
+}

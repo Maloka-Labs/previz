@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0a14" />
+  <title>The Magical Mystery Tour — GaiA is leaving from your neighbourhood</title>
+  <meta name="description" content="There's a camper leaving from your neighbourhood, and there's a seat with your name on it. GaiA drives; you steer your practice. Jump on — first stop, Telegram." />
+  <meta property="og:title" content="The Magical Mystery Tour — the camper is leaving" />
+  <meta property="og:description" content="A seat with your name on it. GaiA drives the miles so you can turn around. First stop: Telegram." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="./assets/img/social.svg" />
+  <link rel="icon" type="image/svg+xml" href="./assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Shrikhand&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles/camper.css" />
+</head>
+<body>
+  <div id="loader" aria-hidden="true">
+    <div class="loader__inner">
+      <svg class="loader__mark" viewBox="0 0 100 100"><g id="loaderDome" fill="none" stroke-width="1.1" stroke-linejoin="round"></g></svg>
+      <div class="loader__meta"><span class="loader__label">MAGICAL MYSTERY TOUR</span><span class="loader__count"><span id="loaderNum">0</span><span class="loader__pct">%</span></span></div>
+      <div class="loader__bar"><span id="loaderFill"></span></div>
+      <p class="loader__hint">warming up the combi — roll up, roll up</p>
+    </div>
+  </div>
+
+  <div id="webgl"></div>
+  <div id="cinematic" aria-hidden="true"></div>
+  <div id="grain" aria-hidden="true"></div>
+
+  <header class="nav">
+    <a class="nav__brand" href="#top">GOOD&nbsp;VYBE&nbsp;GURUS</a>
+    <span class="nav__mid">THE&nbsp;MAGICAL&nbsp;MYSTERY&nbsp;TOUR</span>
+    <a class="nav__cta" id="navJump" href="#" target="_blank" rel="noopener">Jump on</a>
+  </header>
+
+  <main id="content">
+    <section class="csec hero mid" id="top">
+      <span class="blob" style="left:-8vw;top:8vh;width:44vw;height:44vw;background:#ff5d8f" data-parallax="0.06"></span>
+      <span class="blob" style="right:-6vw;bottom:2vh;width:38vw;height:38vw;background:#8a5cff" data-parallax="0.09"></span>
+      <span class="decor" style="left:8vw;top:18vh;font-size:52px" data-parallax="0.18" data-parallax-rot="0.02">✿</span>
+      <span class="decor" style="right:12vw;top:26vh;font-size:38px" data-parallax="0.26" data-parallax-rot="-0.03">✺</span>
+      <span class="decor" style="left:16vw;bottom:16vh;font-size:34px" data-parallax="0.3">❋</span>
+      <div class="cwrap center">
+        <p class="eyebrow" data-reveal>ROLL UP · TEN SEATS · ONE'S YOURS</p>
+        <h1 class="display h-hero" data-reveal>There's a camper leaving from <span class="rainbow-text">your neighbourhood</span>.</h1>
+        <p class="lede" data-reveal>And there's a seat with your name on it. You've spent years getting good at helping people come home to themselves — but the reach ends where the day ends. We built a camper, not a factory. Room for ten.</p>
+        <a class="jump" id="heroJump" href="#" target="_blank" rel="noopener" data-reveal>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 2.9 11.6c-1 .4-1 1.8 0 2.1l4.7 1.5 1.8 5.6c.3.9 1.4 1 2 .3l2.5-2.6 4.7 3.5c.7.5 1.7.1 1.9-.7l3-16c.2-1-.7-1.9-1.6-1.5Z"/></svg>
+          Jump on the bus
+        </a>
+        <div class="scrollcue" data-reveal><span></span>come aboard</div>
+      </div>
+    </section>
+
+    <section class="csec mid" id="drives">
+      <span class="blob" style="right:-10vw;top:10vh;width:40vw;height:40vw;background:#2ec4b6" data-parallax="0.07"></span>
+      <span class="decor" style="right:10vw;bottom:20vh;font-size:44px" data-parallax="0.24" data-parallax-rot="0.04">☀</span>
+      <div class="cwrap">
+        <div class="card card--narrow" data-reveal>
+          <p class="eyebrow">01 — SHE DRIVES HERSELF</p>
+          <h2 class="h-sec" style="margin:.5rem 0 1rem">GaiA takes the wheel of the miles.</h2>
+          <p class="body">Every other version of this tech automates the human out of the vehicle. GaiA does the opposite — she drives the shared road so the whole crew is freed <em>into</em> the work, not out of it. Not so you can be replaced. So you can turn around. You never touch the wheel; you never stop deciding where your practice is going.</p>
+          <p class="kicker">A guide, never a stand-in.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="csec mid" id="route">
+      <span class="blob" style="left:-8vw;top:20vh;width:38vw;height:38vw;background:#67b8ff" data-parallax="0.08"></span>
+      <div class="cwrap">
+        <p class="eyebrow" data-reveal>02 — THE ROUTE</p>
+        <h2 class="h-sec" data-reveal style="margin:.4rem 0 .3rem">Borrowed road to home ground.</h2>
+        <p class="body" data-reveal>The road is already charted — that's the point of getting on early. We start where people already are, then arrive somewhere that's ours.</p>
+        <div class="route">
+          <div class="stop" data-reveal><div class="stop__dot"></div><p class="stop__tag">First stop</p><h3 class="stop__name rainbow-text">Telegram</h3><p class="body">No app-store toll booth, no cold start. The crew that boards here starts serving from day one.</p></div>
+          <div class="stop" data-reveal><div class="stop__dot"></div><p class="stop__tag">Final stop</p><h3 class="stop__name">Home ground</h3><p class="body">Season One's close: our own platform. Ride the whole way and you arrive as <em>founding crew</em> — with a tended, teens-only gate held by its own nonprofit.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="csec" id="seats">
+      <div class="cwrap">
+        <p class="eyebrow" data-reveal>03 — THE TEN SEATS</p>
+        <h2 class="h-sec" data-reveal style="margin:.4rem 0 .3rem">Ten gifts, one van.</h2>
+        <p class="body" data-reveal>Ten verticals board in waves. Yoga rides shotgun — it launches first. The invitation to every seat is the same: <em>GaiA drives, you steer, the crew rides present.</em></p>
+        <div class="seats" id="seatsGrid"></div>
+      </div>
+    </section>
+
+    <section class="csec mid" id="access">
+      <span class="blob" style="right:-8vw;bottom:6vh;width:40vw;height:40vw;background:#8a5cff" data-parallax="0.07"></span>
+      <div class="cwrap">
+        <p class="eyebrow" data-reveal>04 — WHO MEETS WHOM</p>
+        <h2 class="h-sec" data-reveal style="margin:.4rem 0 .3rem">The floor lifts everyone.<br />The human is the ceiling.</h2>
+        <div class="ladder" id="accessLadder"></div>
+        <p class="ladder__note" data-reveal>Most of the world meets <em>her twin</em>. The committed few meet <em>her</em>. The Guru fills her studio rather than emptying it.</p>
+      </div>
+    </section>
+
+    <section class="csec mid" id="deal">
+      <div class="cwrap">
+        <div class="card" data-reveal>
+          <p class="eyebrow">05 — THE DEAL, PLAINLY</p>
+          <div class="deal" style="margin-top:1.2rem">
+            <div><div class="deal__stat rainbow-text">80/20</div><div class="deal__statlabel">practitioner / platform · you keep the majority</div></div>
+            <div>
+              <h2 class="h-sec" style="font-size:clamp(1.7rem,3.6vw,2.8rem);margin-bottom:.7rem">Your twin funds your studio.</h2>
+              <p class="body">The twin does the tireless work, so the real human in the real studio becomes the rarest seat in the house. Income layers: the baseline split on all the Guru activity underneath, <em>and</em> the premium human sessions on top. We don't make you obsolete — we make you sought after.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="csec finale mid" id="jump">
+      <span class="decor" style="left:12vw;top:20vh;font-size:40px" data-parallax="0.28" data-parallax-rot="0.05">✦</span>
+      <span class="decor" style="right:14vw;top:30vh;font-size:30px" data-parallax="0.34">✿</span>
+      <div class="cwrap center">
+        <p class="eyebrow" data-reveal>THE CAMPER'S LEAVING SOON</p>
+        <h2 class="display h-hero" data-reveal>From your neighbourhood. <span class="rainbow-text">Jump on.</span></h2>
+        <p class="lede center" data-reveal>Ten seats. One's yours if you want it. This isn't a platform asking you to perform — it's a road trip asking you to come as you are.</p>
+        <a class="jump" id="finaleJump" href="#" target="_blank" rel="noopener" data-reveal>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 2.9 11.6c-1 .4-1 1.8 0 2.1l4.7 1.5 1.8 5.6c.3.9 1.4 1 2 .3l2.5-2.6 4.7 3.5c.7.5 1.7.1 1.9-.7l3-16c.2-1-.7-1.9-1.6-1.5Z"/></svg>
+          Ride to Telegram
+        </a>
+        <p class="fine">© <span id="year"></span> Good Vybe Gurus · Maloka · The Wellness Intelligence Company · GaiA drives, you steer.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="fallback" hidden>
+    <div class="fallback__inner">
+      <h1 class="display h-sec">The Magical Mystery Tour</h1>
+      <p class="lede center">Your browser can't render the live tour. The full experience needs WebGL2 — but the camper's still leaving from your neighbourhood.</p>
+      <a class="jump" id="fbJump" href="#" target="_blank" rel="noopener">Jump on the bus</a>
+    </div>
+  </div>
+
+  <script src="./dist/camper.bundle.js"></script>
+</body>
+</html>
