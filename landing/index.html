@@ -37,6 +37,11 @@
    Everything that moves still derives from ONE spring-damped scroll
    model (the engine at the foot of the document). Nothing loops for
    decoration's sake.
+
+   v3, the Wonder Pass, keeps that creed and gives the drive weather,
+   light and company: the hour grades the whole world, a shower
+   crosses one chapter and leaves a rainbow, and the night sky earns
+   its campsite. Every new layer reads one shared environment, E.
    ================================================================ */
 
 :root{
@@ -813,6 +818,39 @@ html.rolling .cue{ opacity:0; }
   .note b{ min-width:0; }
 }
 
+/* ================================================================
+   THE WONDER PASS (v3)
+   Each layer of the drive keeps its styles in its own block below,
+   its reduced-motion rules included.
+   ================================================================ */
+
+/* [wonder-css:light] golden-hour rays, the sun's halftone, the moon's face, windows at dusk */
+/* [/wonder-css:light] */
+
+/* [wonder-css:sky] the deep night: Milky Way, constellations, aurora, wishing stars */
+/* [/wonder-css:sky] */
+
+/* [wonder-css:weather] the passing shower, wet road, rainbow, wind */
+/* [/wonder-css:weather] */
+
+/* [wonder-css:life] murmuration, fireflies, eyes at the tree-line */
+/* [/wonder-css:life] */
+
+/* [wonder-css:road] headlamps on the bends, moths, verge daisies, a hand on the horn */
+/* [/wonder-css:road] */
+
+/* [wonder-css:cab] the windscreen keeps the hour and the weather */
+/* [/wonder-css:cab] */
+
+/* [wonder-css:camp] firelight on the clearing */
+/* [/wonder-css:camp] */
+
+/* [wonder-css:print] ink, paper, registration */
+/* [/wonder-css:print] */
+
+/* [wonder-css:sound] the night has a voice */
+/* [/wonder-css:sound] */
+
 /* ---------------- reduced motion: the world holds still ---------------- */
 @media (prefers-reduced-motion: reduce){
   .js .reveal > *{ transform:none; transition:none; }
@@ -856,10 +894,20 @@ html.rolling .cue{ opacity:0; }
         <stop offset="0" stop-color="#f0a91d" stop-opacity=".5"/>
         <stop offset="1" stop-color="#f0a91d" stop-opacity="0"/>
       </linearGradient>
+      <!-- [wonder-defs:weather] -->
+      <!-- [/wonder-defs:weather] -->
+
+      <!-- [wonder-defs:road] -->
+      <!-- [/wonder-defs:road] -->
     </defs>
 
     <path id="roadBase"  class="road-base"></path>
+    <!-- [wonder-spine:weather] what the shower leaves on the road -->
+    <!-- [/wonder-spine:weather] -->
     <path id="roadLit"   class="road-lit" clip-path="url(#travelled)"></path>
+
+    <!-- [wonder-spine:road] what her lamps find ahead of her -->
+    <!-- [/wonder-spine:road] -->
 
     <g id="badgeG"></g>
 
@@ -932,6 +980,8 @@ html.rolling .cue{ opacity:0; }
 </div>
 
 <div class="grain" id="grain" aria-hidden="true"></div>
+<!-- [wonder-body:print] -->
+<!-- [/wonder-body:print] -->
 
 <!-- the foreground: at the end of the road the telegraph poles step in
      front, and the campsite sits behind the wires -->
@@ -1803,6 +1853,95 @@ function mulberry(seed){
   };
 }
 
+/* ================================================================
+   THE WONDER PASS — v3
+   v2 made scrolling into driving. v3 gives the drive weather, light
+   and company, and the creed holds: everything moves because the
+   journey moves.
+
+   E is the environment: one object, written once per frame, read by
+   every wonder layer. It carries the hour, the weather, the wind,
+   where the sun and moon hang, and exactly where the camper is. No
+   layer measures the DOM or reads the scrollbar — they read E.
+
+   Layers register on planes with on(plane, fn, z):
+     measure  resize-time: seed, size, bake sprites      fn()
+     soft     quarter-res light buffer, blurred up       fn(bgc, E)   buffer px = CSS px / Q
+     sky      full-res, behind the country               fn(fc, E)
+     land     after each band of country is painted      fn(fc, E, L, travel, col, info)
+     near     in front of the country, behind the copy   fn(fc, E)
+     fore     the foreground plane, over the copy        fn(fgc, E)
+     dom      SVG/DOM writes, guarded, once per frame    fn(E)
+   Lower z paints first within a plane. A layer that throws is
+   retired on the spot, so one fault can never stop the drive.
+   ================================================================ */
+const E = {
+  t:0, dt:0.016, W:1, H:1, still:false, narrow:false, coarse:false,
+  prog:0, glide:0, scroll:0, rate:0, speed:0, swing:0, dist:0, px:0, py:0,
+  night:0,      // 0 afternoon .. 1 midnight — the dial the whole world grades on
+  golden:0,     // the low sun: swells through the afternoon, gone once it has set
+  sunUp:1,      // 1 while the sun is in the sky, 0 once it is down
+  dusk:0,       // the blue hour between sunset and true night
+  storm:0,      // the sky darkening: leads the rain in, leaves with it
+  rain:0,       // the shower itself
+  wet:0,        // the road stays wet a while after
+  bow:0,        // the rainbow, as it clears
+  camp:0,       // nearness of the campsite, 0 .. 1 on the last stretch
+  arrived:false,
+  wind:0,       // signed, + blows right: the slipstream of the drive, plus gusts
+  flick:0.85,   // the campfire's flicker — one signal for all its light
+  sky:{ top:[27,53,96], mid:[122,74,94], low:[217,119,46] },   // the live grade
+  sun:{ x:0, y:0, r:50, sx:1, sy:1, a:1 },    // centre, screen px
+  moon:{ x:0, y:0, r:50, a:0 },
+  /* the camper: x,y page px · sx,sy screen px · hc,hs unit heading ·
+     flip ±1 (mirrored when heading left) · lamps 0..1 · hop px (a layer
+     may write hop to lift her body) */
+  bus:{ x:0, y:0, sx:0, sy:0, hc:0, hs:1, deg:90, flip:1, scale:1, len:0, vis:false, lamps:0, hop:0 },
+  zones:null
+};
+const WONDER = { measure:[], soft:[], sky:[], land:[], near:[], fore:[], dom:[] };
+function on(plane, fn, z){
+  const a = WONDER[plane];
+  a.push({ fn, z: z || 0, dead:false });
+  a.sort((p, q) => p.z - q.z);
+}
+function retire(l, err){
+  l.dead = true;
+  if(window.console) console.error('camper: a wonder layer retired —', err);
+}
+/* canvas planes: each layer paints inside its own save/restore */
+function paint(plane, g, a, b, c, d, e){
+  const L = WONDER[plane];
+  for(let i = 0; i < L.length; i++){
+    const l = L[i];
+    if(l.dead) continue;
+    g.save();
+    try { l.fn(g, a, b, c, d, e); } catch(err){ retire(l, err); }
+    g.restore();
+  }
+}
+function run(plane, a){
+  const L = WONDER[plane];
+  for(let i = 0; i < L.length; i++){
+    const l = L[i];
+    if(l.dead) continue;
+    try { l.fn(a); } catch(err){ retire(l, err); }
+  }
+}
+/* a point given in the camper's own drawing space (nose at +x, wheels
+   at +y, as her SVG is drawn) returned in page px */
+function busAt(lx, ly, out){
+  const B = E.bus;
+  out.x = B.x + B.scale * (lx * B.hc - ly * B.flip * B.hs);
+  out.y = B.y + B.scale * (lx * B.hs + ly * B.flip * B.hc);
+  return out;
+}
+/* viewport, cached at measure time */
+let VW = 1, VH = 1, VWI = 1;
+
+/* the slate veil a shower draws across the grade */
+const STORM = { top:hex('#232846'), mid:hex('#4b4a6a'), low:hex('#8a6f7c') };
+
 /* Four points on the drive: late afternoon, sunset, dusk, midnight. */
 const GRADE = [
   { at:0.00, top:'#1b3560', mid:'#7a4a5e', low:'#d9772e' },
@@ -2051,11 +2190,20 @@ function cacheZones(){
   };
   zones.screen = mk(screenEl);
   zones.ticker = mk(tickerWrap);
+  zones.hero   = mk(document.querySelector('.hero'));
+  zones.statement = mk(document.querySelector('.statement'));
+  zones.gaia   = mk(document.getElementById('gaia'));
+  zones.route  = mk(document.getElementById('route'));
+  zones.seats  = mk(document.getElementById('seats'));
+  zones.access = mk(document.getElementById('access'));
+  zones.finale = mk(document.querySelector('.finale'));
+  zones.smallprint = mk(document.getElementById('smallprint'));
   const c = mk(campSvg);
   if(c){ c.fx = c.left + c.w * (470/760); c.fy = c.top + c.h * (236/280); }
   zones.camp = c;
   tickW = tickerEl && tickerEl.firstElementChild
     ? tickerEl.firstElementChild.getBoundingClientRect().width : 0;
+  E.zones = zones;
 }
 const onScreen = (z, m = 120) =>
   !!z && z.bot > S.glide - m && z.top < S.glide + innerHeight + m;
@@ -2064,14 +2212,72 @@ function measure(){
   maxScroll = Math.max(1, document.documentElement.scrollHeight - innerHeight);
   nextFire = fireOdo + maxScroll * 0.05;   // the first pop comes early
   const dpr = Math.min(devicePixelRatio || 1, 2);
-  fx.width = innerWidth * dpr; fx.height = innerHeight * dpr;
+  /* The canvases are sized to the box they are laid out in (the viewport
+     less any scrollbar), so a canvas pixel and a page pixel are the same
+     thing — which is what lets a canvas layer sit exactly on the SVG road. */
+  VWI = innerWidth; VH = innerHeight;
+  VW = document.documentElement.clientWidth || VWI;
+  fx.width = VW * dpr; fx.height = VH * dpr;
   fc.setTransform(dpr,0,0,dpr,0,0);
-  fg.width = innerWidth * dpr; fg.height = innerHeight * dpr;
+  fg.width = VW * dpr; fg.height = VH * dpr;
   fgc.setTransform(dpr,0,0,dpr,0,0);
   seedStars();
   seedLand();
   buildSpine();
   cacheZones();
+  E.W = VW; E.H = VH; E.narrow = VW <= 720; E.coarse = COARSE; E.still = REDUCED;
+  run('measure');
+}
+
+/* the height of a ridge or hill band's skyline at screen x — for
+   anything that needs to know whether it is behind the hills */
+function skylineAt(L, x){
+  const travel = S.dist * L.sp + S.swing * L.sp * 170 + P.x * L.sp * 110;
+  const u = wrap(x + travel, L.per) / L.step;
+  const i = Math.floor(u), f = u - i;
+  const a = L.pts[i], b = L.pts[Math.min(i + 1, L.pts.length - 1)];
+  return VH * L.base - (a + (b - a) * f) * VH;
+}
+
+/* ---------------------------------------------------------------
+   THE DIRECTOR
+   Writes the hour, the weather and the wind into E, once per frame.
+   The shower is pinned to the GaiA chapter by its measured position,
+   so the wipers in her cab are working when you reach them on any
+   screen: the sky darkens on the approach, it rains while the cab
+   is in view, and the bow comes out as the chapter leaves.
+   --------------------------------------------------------------- */
+function direct(now, dt){
+  const p = S.prog, H = VH;
+  E.t = now; E.dt = dt;
+  E.prog = p; E.glide = S.glide; E.scroll = S.y; E.rate = S.rate; E.dist = S.dist;
+  E.speed = Math.min(1, Math.abs(S.rate) / 2600);
+  E.swing = S.swing; E.px = P.x; E.py = P.y;
+  E.night  = smooth(0.30, 0.78, p);
+  E.golden = smooth(0.02, 0.22, p) * (1 - smooth(0.36, 0.48, p));
+  E.sunUp  = 1 - smooth(0.40, 0.52, p);
+  E.dusk   = smooth(0.36, 0.50, p) * (1 - smooth(0.62, 0.80, p));
+  E.camp   = smooth(0.86, 0.985, p);
+  E.arrived = arrived;
+
+  let storm = 0, rain = 0, wet = 0, bow = 0;
+  const zg = zones.gaia;
+  if(zg && !REDUCED){
+    const c = S.glide + H * 0.5;                 // the page line at mid-screen
+    const out0 = zg.top + zg.h * 0.55;           // where the shower starts to clear
+    const rin = smooth(zg.top - H * 0.95, zg.top - H * 0.15, c);
+    storm = smooth(zg.top - H * 1.35, zg.top - H * 0.40, c) * (1 - smooth(out0 - H * 0.10, out0 + H * 0.55, c));
+    rain  = rin * (1 - smooth(out0, out0 + H * 0.60, c));
+    wet   = rin * (1 - smooth(zg.bot + H * 0.20, zg.bot + H * 1.50, c));
+    bow   = smooth(out0 + H * 0.10, out0 + H * 0.65, c) * (1 - smooth(zg.bot + H * 0.75, zg.bot + H * 1.50, c));
+  }
+  E.storm = storm; E.rain = rain; E.wet = wet; E.bow = bow;
+
+  const gust = REDUCED ? 0 :
+    (Math.sin(now * 0.00071) + Math.sin(now * 0.00173 + 1.3) * 0.6) * (0.10 + storm * 0.30);
+  E.wind = clamp(-S.rate / 1500, -1.3, 1.3) + gust;
+  E.flick = REDUCED ? 0.85 :
+    0.74 + 0.14 * Math.sin(now * 0.0113) + 0.08 * Math.sin(now * 0.0237 + 1.7) + 0.04 * Math.sin(now * 0.0531 + 0.4);
 }
 
 /* ---------------------------------------------------------------
@@ -2294,6 +2500,9 @@ function drawFlies(t, prog, travel, H, W){
   }
 }
 
+/* what a land layer is told about the band it follows: ridge/hills
+   { base }, scene { y0 }, hedge { yb }, poles { xs, topY, armY, armY2 } */
+const LINFO = { base:0, y0:0, yb:0, xs:null, topY:0, armY:0, armY2:0 };
 function drawLand(t, prog, night){
   const W = innerWidth, H = innerHeight;
   const drift = S.swing, px = P.x;
@@ -2334,6 +2543,7 @@ function drawLand(t, prog, night){
         }
       }
       fc.lineTo(W + per, H + 4); fc.lineTo(x0, H + 4); fc.closePath(); fc.fill();
+      LINFO.base = base;
     }
 
     else if(L.kind === 'scene'){
@@ -2364,6 +2574,7 @@ function drawLand(t, prog, night){
           fc.globalAlpha = 1;
         }
       }
+      LINFO.y0 = y0;
     }
 
     else if(L.kind === 'hedge'){
@@ -2388,6 +2599,7 @@ function drawLand(t, prog, night){
         }
       }
       drawFlies(t, prog, travel, H, W);
+      LINFO.yb = yb;
     }
 
     else if(L.kind === 'poles'){
@@ -2423,7 +2635,11 @@ function drawLand(t, prog, night){
       paintPoles(fc, 1);
       const fgA = smooth(0.90, 0.985, prog);
       if(fgA > 0.01) paintPoles(fgc, fgA);
+      LINFO.xs = xs; LINFO.topY = topY; LINFO.armY = armY; LINFO.armY2 = armY2;
     }
+
+    // whatever lives in this band of country paints straight after it
+    if(WONDER.land.length) paint('land', fc, E, L, travel, col, LINFO);
   }
 }
 
@@ -2599,7 +2815,7 @@ function drawFx(t, prog, dt){
   const px = P.x, py = P.y;
 
   const showA = smooth(0.42, 0.82, prog);
-  const softVisible = showA > 0.01 || night < 0.995;
+  const softVisible = showA > 0.01 || night < 0.995 || WONDER.soft.length > 0;
   if(softVisible) bgc.clearRect(0, 0, BW, BH);
 
   /* --- cloud banks, lit by whatever colour the sky is --- */
@@ -2646,6 +2862,9 @@ function drawFx(t, prog, dt){
     bgc.globalCompositeOperation = 'source-over';
   }
 
+  // light that wants to be soft — rays, aurora, storm — joins the buffer here
+  paint('soft', bgc, E);
+
   // lift the soft layers up to full size in one blit
   if(softVisible) fc.drawImage(bg, 0, 0, BW, BH, 0, 0, W, H);
 
@@ -2687,11 +2906,14 @@ function drawFx(t, prog, dt){
   }
   fc.globalAlpha = 1;
 
-  /* --- birds, then the country, then the near lives --- */
+  /* --- the sky's own things, birds, then the country, then the near lives --- */
+  paint('sky', fc, E);
   updateBirds(dt, prog, t);
   drawLand(t, prog, night);
+  paint('near', fc, E);
   drawPuffs(dt, t);
   drawSparks(dt, t);
+  paint('fore', fgc, E);
 }
 
 /* ---------------- paper grain, baked once ---------------- */
@@ -2720,6 +2942,36 @@ function hud(){
     spdBar.style.width = (v / 60 * 100).toFixed(1) + '%';
   }
 }
+
+/* ================================================================
+   THE WONDER LAYERS
+   One block per layer. Each registers itself with on() and reads E;
+   none of them knows the others exist.
+   ================================================================ */
+
+/* ---- [wonder:light] golden-hour rays, the sun's halftone, the moon's face, windows at dusk ---- */
+/* ---- [/wonder:light] ---- */
+
+/* ---- [wonder:sky] the deep night: Milky Way, constellations, aurora, wishing stars ---- */
+/* ---- [/wonder:sky] ---- */
+
+/* ---- [wonder:weather] the passing shower, wet road, rainbow, wind ---- */
+/* ---- [/wonder:weather] ---- */
+
+/* ---- [wonder:life] murmuration, fireflies, eyes at the tree-line ---- */
+/* ---- [/wonder:life] ---- */
+
+/* ---- [wonder:road] headlamps on the bends, moths, verge daisies, a hand on the horn ---- */
+/* ---- [/wonder:road] ---- */
+
+/* ---- [wonder:cab] the windscreen keeps the hour and the weather ---- */
+/* ---- [/wonder:cab] ---- */
+
+/* ---- [wonder:camp] firelight on the clearing ---- */
+/* ---- [/wonder:camp] ---- */
+
+/* ---- [wonder:print] ink, paper, registration ---- */
+/* ---- [/wonder:print] ---- */
 
 /* ---------------- the loop ----------------
    One rAF. The van's position, heading, lean, the lit road behind her,
@@ -2750,8 +3002,15 @@ function frame(now){
   P.y += (P.ty - P.y) * Math.min(1, dt * 3.2);
   if(intro < 1) intro = Math.min(1, intro + dt * 0.7);
 
-  const night = smooth(0.30, 0.78, S.prog);
+  direct(now, dt);
+  const night = E.night;
   const g = gradeAt(S.prog);
+  if(E.storm > 0.003){
+    g.top = mix(g.top, STORM.top, E.storm * 0.62);
+    g.mid = mix(g.mid, STORM.mid, E.storm * 0.58);
+    g.low = mix(g.low, STORM.low, E.storm * 0.50);
+  }
+  E.sky = g;
   const key = rgb(g.top) + rgb(g.mid) + rgb(g.low);
   if(key !== lastGrade){
     lastGrade = key;
@@ -2764,14 +3023,23 @@ function frame(now){
          horizon, the way a real one does through thick air --- */
   const sunT = clamp(S.prog / 0.46, 0, 1.3);
   const setT = smooth(0.28, 0.44, S.prog);
-  sunEl.style.transform = 'translate(' + (71 + sunT * 16 - S.swing * 2.2 + P.x * 0.9) + 'vw,' +
-    (58 + sunT * sunT * 30 + P.y * 0.7) + 'vh)' +
+  const sunXv = 71 + sunT * 16 - S.swing * 2.2 + P.x * 0.9;
+  const sunYv = 58 + sunT * sunT * 30 + P.y * 0.7;
+  sunEl.style.transform = 'translate(' + sunXv + 'vw,' + sunYv + 'vh)' +
     ' scale(' + (1 + setT * 0.14).toFixed(3) + ',' + (1 - setT * 0.24).toFixed(3) + ')';
   sunEl.style.opacity = (1 - smooth(0.40, 0.52, S.prog)).toFixed(3);
   const moonT = smooth(0.54, 1.0, S.prog);
-  moonEl.style.transform = 'translate(' + (74 - moonT * 46 - S.swing * 3.4 + P.x * 1.5) + 'vw,' +
-    (78 - moonT * 62 + P.y * 1.1) + 'vh)';
+  const moonXv = 74 - moonT * 46 - S.swing * 3.4 + P.x * 1.5;
+  const moonYv = 78 - moonT * 62 + P.y * 1.1;
+  moonEl.style.transform = 'translate(' + moonXv + 'vw,' + moonYv + 'vh)';
   moonEl.style.opacity = moonT.toFixed(3);
+  // where the two bodies actually hang, for every layer that lights by them
+  const bodyR = clamp(VWI * 0.09, 74, 132) / 2;
+  E.sun.r = E.moon.r = bodyR;
+  E.sun.x = sunXv * VWI / 100 + bodyR;  E.sun.y = sunYv * VH / 100 + bodyR;
+  E.sun.sx = 1 + setT * 0.14; E.sun.sy = 1 - setT * 0.24; E.sun.a = E.sunUp;
+  E.moon.x = moonXv * VWI / 100 + bodyR; E.moon.y = moonYv * VH / 100 + bodyR;
+  E.moon.a = moonT;
 
   /* --- the traveller drives the spine --- */
   if(PATH_LEN > 0){
@@ -2828,7 +3096,7 @@ function frame(now){
     if(ease < 1) traveller.style.opacity = ease.toFixed(3);
     else if(traveller.style.opacity !== '') traveller.style.opacity = '';
     tvBody.setAttribute('transform',
-      'rotate(' + lean.toFixed(2) + ') translate(0,' + bob.toFixed(2) + ')');
+      'rotate(' + lean.toFixed(2) + ') translate(0,' + (bob - E.bus.hop).toFixed(2) + ')');
 
     // the wheels genuinely roll: distance covered over wheel radius
     wheelRot += (len - prevWheelLen) / (8.5 * Math.max(0.2, BUS)) * 57.2958;
@@ -2866,6 +3134,12 @@ function frame(now){
     const hr = heading * Math.PI / 180, hc = Math.cos(hr), hs = Math.sin(hr);
     const exX = p.x + BUS * (-42 * hc - 8 * flipY * hs);
     const exY = p.y + BUS * (-42 * hs + 8 * flipY * hc);
+    // her pose, for every layer that keeps her company
+    const B = E.bus;
+    B.x = p.x; B.y = p.y; B.sx = p.x; B.sy = p.y - S.y;
+    B.hc = hc; B.hs = hs; B.deg = heading; B.flip = flipY; B.scale = BUS; B.len = len;
+    B.vis = B.sy > -180 && B.sy < VH + 180;
+    B.lamps = smooth(0.36, 0.62, S.prog);
     if(p.y > S.glide - 150 && p.y < S.glide + innerHeight + 150)
       spawnPuff(exX, exY, -hc, -hs, dt);
 
@@ -2977,6 +3251,7 @@ function frame(now){
     }
   }
 
+  run('dom', E);
   hud();
   drawFx(now, S.prog, dt);
   requestAnimationFrame(frame);
@@ -3004,6 +3279,19 @@ function still(){
   }
   tvBeam.setAttribute('opacity', 1);
   if(wsStars) wsStars.setAttribute('opacity', '0.8');
+  // the environment for this one frame: dusk, dry, the moon up, lamps lit
+  direct(0, 0.016);
+  E.sky = g;
+  const bodyR = clamp(VWI * 0.09, 74, 132) / 2;
+  E.sun.r = E.moon.r = bodyR; E.sun.a = 0; E.sun.x = VWI * 0.9; E.sun.y = VH * 1.2;
+  E.moon.x = VWI * 0.30 + bodyR; E.moon.y = VH * 0.20 + bodyR; E.moon.a = 1;
+  if(PATH_LEN > 0){
+    const p = roadBase.getPointAtLength(PATH_LEN * 0.06), B = E.bus;
+    B.x = p.x; B.y = p.y; B.sx = p.x; B.sy = p.y - S.y;
+    B.hc = 0; B.hs = 1; B.deg = 90; B.flip = 1; B.scale = PAGE_W <= 720 ? 0.92 : 1.42;
+    B.len = PATH_LEN * 0.06; B.vis = B.sy > -180 && B.sy < VH + 180; B.lamps = 1;
+  }
+  run('dom', E);
   hud();
   drawFx(0, 0.72, 0.016);
 }
